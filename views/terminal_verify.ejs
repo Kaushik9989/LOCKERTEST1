@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Droppoint — Verify OTP</title>
+
+  <style>
+    :root{
+      --orange: #ff7b00;
+      --orange-dark: #e56e00;
+      --black: #111111;
+      --muted: #6b7280;
+
+      /* NEW: surfaces for keypad */
+      --border: #e7e7e7; /* NEW */
+      --bg-subtle: #f9fafb; /* NEW */
+    }
+
+    /* full centered layout (kiosk) */
+    html,body{
+      height:100%;
+      margin:0;
+      background: #fff;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    .verify-card{
+      position: relative; /* moved up here */
+      width:100%;
+      max-width:760px; /* NEW: widened to make room for keypad */
+      border-radius:16px;
+      padding:28px;
+      box-shadow:0 18px 40px rgba(10,10,20,0.06);
+      background:linear-gradient(180deg,#ffffff,#fffaf5);
+      text-align:center;
+    }
+
+    .logo{
+      width:140px;
+      height:auto;
+      background:var(--black);
+      border-radius:8px;
+      padding:6px;
+      display:inline-block;
+      margin-bottom:14px;
+    }
+
+    h3{ margin:6px 0 4px 0; font-size:1.35rem; color:var(--black); }
+    .lead{ color:var(--muted); margin-bottom:14px; }
+
+    .field-label{ display:block; font-size:0.85rem; color:var(--muted); margin-bottom:6px; text-align:left; }
+
+    .input-group { width:100%; display:flex; gap:8px; margin-bottom:14px; }
+    .input-group .prefix {
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:0.6rem 0.9rem; background:#111; color:#fff; border-radius:8px; font-weight:700;
+      min-width:64px;
+    }
+    .form-control {
+      flex:1;
+      padding:0.7rem 0.9rem;
+      border-radius:10px;
+      border:1px solid #e7e7e7;
+      font-size:1rem;
+    }
+    .form-control[readonly] { background:#f8fafb; color:var(--black); }
+
+    .otp-input {
+      width:100%;
+      padding:0.8rem;
+      border-radius:12px;
+      border:1px solid #eee;
+      font-size:1.4rem;
+      text-align:center;
+      letter-spacing:0.3em;
+      font-weight:700;
+      margin-bottom:14px;
+    }
+
+    .btn-row{ display:flex; gap:10px; margin-top:12px; }
+    .btn {
+      flex:1;
+      padding:0.85rem 1rem;
+      border-radius:12px;
+      font-weight:700;
+      font-size:1rem;
+      cursor:pointer;
+      border:0;
+    }
+    .btn-primary {
+      background:linear-gradient(145deg,var(--orange),var(--orange-dark));
+      color:#fff;
+      box-shadow:0 10px 28px rgba(255,123,0,0.18);
+    }
+    .btn-ghost {
+      background:transparent;
+      color:var(--black);
+      border:2px solid #eee;
+    }
+
+    .hint { color:var(--muted); font-size:0.9rem; margin-top:10px; }
+    .alert { margin-top:12px; padding:10px; border-radius:8px; font-weight:600; }
+
+    .countdown { font-weight:700; color:var(--muted); }
+
+    @media (max-width:520px){
+      .verify-card{ padding:20px; border-radius:12px; }
+      .otp-input { font-size:1.2rem; }
+    }
+
+    .back {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      color: var(--black);
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .12s ease, background .2s ease, border-color .2s ease;
+    }
+    .back:hover { border-color: #d1d5db; }
+    .back:active { transform: translateY(1px); }
+    .back svg { width: 18px; height: 18px; display: block; }
+
+    /* ===========================
+       NEW: OTP + Keypad layout
+       =========================== */
+    .otp-wrap{ display:grid; gap:16px; align-items:start; }
+    @media (min-width:760px){
+      .otp-wrap{ grid-template-columns: 1fr 300px; } /* input | keypad */
+    }
+
+    /* ===========================
+       NEW: Virtual keypad styles
+       =========================== */
+    .keypad{
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, #fff, var(--bg-subtle));
+      box-shadow: 0 2px 8px rgba(16,24,40,.06);
+      padding:12px;
+      text-align:left;
+    }
+    .keypad h4{
+      margin:2px 0 10px;
+      font-size:.95rem;
+      color:var(--muted);
+      font-weight:700;
+    }
+    .key-grid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+    }
+    .key{
+      user-select:none; -webkit-user-select:none;
+      display:inline-flex; align-items:center; justify-content:center;
+      height:56px; border-radius:12px; border:1px solid var(--border);
+      background:#fff;
+      font-weight:800; font-size:1.05rem; cursor:pointer;
+      transition: transform .08s ease, box-shadow .2s ease;
+      box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    }
+    .key:active{ transform: translateY(1px); }
+    .key.action{ background: linear-gradient(180deg, #fff, #f4f6f8); font-weight:700; }
+    .key.wide{ grid-column: span 2; }
+    .key svg{ width:20px; height:20px; }
+    .key[disabled]{ opacity:.5; cursor:not-allowed; }
+  </style>
+
+</head>
+<body>
+  <div class="verify-card" role="main">
+    <button id="backBtn" class="back" aria-label="Go back">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M15 6 L9 12 L15 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      Back
+    </button>
+    <img src="/images/droppointlogo.png" alt="Droppoint" class="logo" />
+
+    <h3 id="verify-heading">Verify your phone</h3>
+    <p class="lead">Enter the OTP sent to your phone</p>
+
+    <% if (typeof message !== 'undefined' && message) { %>
+      <div class="alert" style="background:#fff7e6;color:#8b4b00;"><%= message %></div>
+    <% } %>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert" style="background:#ffe9e6;color:#8b1c1c;"><%= error %></div>
+    <% } %>
+
+    <!-- VERIFY FORM -->
+    <form id="verifyForm" method="post" action="/terminal/verify-otp" autocomplete="off" novalidate>
+      <input type="hidden" name="phone" value="<%= phone %>" />
+
+      <label class="field-label" for="code">Enter OTP</label>
+
+      <!-- NEW: wrap input + button + keypad -->
+      <div class="otp-wrap">
+        <!-- Left: single OTP input + button -->
+        <div>
+          <input id="code" name="code" type="text" inputmode="numeric" maxlength="6" pattern="\d{4,6}"
+                class="otp-input" placeholder="• • • • • •" autocomplete="one-time-code" required />
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" id="verifyBtn">Verify</button>
+          </div>
+        </div>
+
+        <!-- Right: Virtual Keypad (NEW) -->
+        <section class="keypad" aria-label="On-screen keypad for OTP entry">
+          <h4>On-screen keypad</h4>
+          <div class="key-grid">
+            <!-- Row 1 -->
+            <button type="button" class="key" data-digit="1" aria-label="1">1</button>
+            <button type="button" class="key" data-digit="2" aria-label="2">2</button>
+            <button type="button" class="key" data-digit="3" aria-label="3">3</button>
+            <!-- Row 2 -->
+            <button type="button" class="key" data-digit="4" aria-label="4">4</button>
+            <button type="button" class="key" data-digit="5" aria-label="5">5</button>
+            <button type="button" class="key" data-digit="6" aria-label="6">6</button>
+            <!-- Row 3 -->
+            <button type="button" class="key" data-digit="7" aria-label="7">7</button>
+            <button type="button" class="key" data-digit="8" aria-label="8">8</button>
+            <button type="button" class="key" data-digit="9" aria-label="9">9</button>
+            <!-- Row 4 -->
+            <button type="button" class="key action wide" id="clearKey" aria-label="Clear">Clear</button>
+            <button type="button" class="key" data-digit="0" aria-label="0">0</button>
+            <button type="button" class="key action" id="backspaceKey" aria-label="Backspace">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 12l5.5-6H21a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8.5L3 12z" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M14 9l4 4M18 9l-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <!-- Row 5 -->
+            <button type="button" class="key action wide" id="submitKey" aria-label="Submit code">Submit</button>
+          </div>
+        </section>
+      </div>
+      <!-- /otp-wrap -->
+    </form>
+
+    <!-- RESEND FORM (separate, not nested) -->
+    <form id="resendForm" method="post" action="/send-otp/sms" style="margin-top:12px;">
+      <input type="hidden" name="phone" value="<%= phone %>" />
+      <button id="resendBtn" class="btn btn-ghost" type="submit" disabled>
+        Resend <span id="resendCountdown" class="countdown"></span>
+      </button>
+    </form>
+
+    <p class="hint">Didn't receive the code? You can resend it after a few seconds.</p>
+  </div>
+
+  <!-- Existing resend timer (kept as-is) -->
+  <script>
+  (function(){
+    const resendBtn = document.getElementById('resendBtn');
+    const resendCountdown = document.getElementById('resendCountdown');
+    const resendForm = document.getElementById('resendForm');
+
+    const initialWait = Number(<%= typeof resendWait !== 'undefined' ? resendWait : 0 %>) || 0;
+    let timer = null;
+
+    function startLocalTimer(seconds) {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (!seconds || seconds <= 0) {
+        resendCountdown.textContent = '';
+        resendBtn.disabled = false;
+        return;
+      }
+      resendBtn.disabled = true;
+      resendCountdown.textContent = `(${seconds}s)`;
+
+      timer = setInterval(() => {
+        seconds--;
+        if (seconds > 0) {
+          resendCountdown.textContent = `(${seconds}s)`;
+        } else {
+          clearInterval(timer);
+          timer = null;
+          resendCountdown.textContent = '';
+          resendBtn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    startLocalTimer(initialWait);
+
+    resendForm.addEventListener('submit', () => {
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Sending…';
+    });
+  })();
+  </script>
+
+<!-- Existing verify/key handlers (updated: one-shot verify + guarded back) -->
+<script>
+  (function(){
+    const codeInput = document.getElementById('code');
+    const resendBtn = document.getElementById('resendBtn');
+    const resendCountdown = document.getElementById('resendCountdown');
+    const form = document.getElementById('verifyForm');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const backBtn = document.getElementById('backBtn');
+
+    try { codeInput.focus(); } catch(e){}
+
+    const initialWait = Number(<%= typeof resendWait !== 'undefined' ? resendWait : 30 %>) || 30;
+    let timeLeft = initialWait;
+
+    // 🔒 one-shot flags
+    let isVerifying = false;
+    let isNavigatingBack = false;
+    // expose for keypad script
+    window.__isVerifying = false;
+
+    function startTimer(seconds) {
+      timeLeft = seconds;
+      if (timeLeft > 0) {
+        resendBtn.disabled = true;
+        resendCountdown.textContent = `(${timeLeft}s)`;
+        const timer = setInterval(()=> {
+          timeLeft--;
+          if (timeLeft > 0) {
+            resendCountdown.textContent = `(${timeLeft}s)`;
+          } else {
+            clearInterval(timer);
+            resendCountdown.textContent = '';
+            resendBtn.disabled = false;
+          }
+        }, 1000);
+      } else {
+        resendCountdown.textContent = '';
+        resendBtn.disabled = false;
+      }
+    }
+
+    startTimer(initialWait);
+
+    // Enter key submits once, via requestSubmit (so submit handler runs)
+    codeInput.addEventListener('keydown', (ev)=>{
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        if (isVerifying) return;
+        form.requestSubmit();
+      }
+    });
+
+    // 🔑 central place where we enforce "only once"
+    form.addEventListener('submit', (e) => {
+      if (isVerifying) {
+        // already in-flight, block extra submits
+        e.preventDefault();
+        return;
+      }
+
+      const raw = codeInput.value || '';
+      const code = raw.replace(/\D/g, '');
+
+      // Basic validation: 4–6 digits
+      if (code.length < 4 || code.length > 6) {
+        e.preventDefault();
+        codeInput.focus();
+        codeInput.style.boxShadow = '0 0 0 3px rgba(255,123,0,0.25)';
+        setTimeout(() => { codeInput.style.boxShadow = ''; }, 600);
+        return;
+      }
+
+      // ✅ from here it becomes one-shot
+      isVerifying = true;
+      window.__isVerifying = true;
+
+      verifyBtn.disabled = true;
+      verifyBtn.style.pointerEvents = 'none';
+      verifyBtn.textContent = 'Verifying…';
+    });
+
+    // Back button: also one-shot, so users can't spam navigation
+    if (backBtn){
+      backBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        if (isNavigatingBack) return;
+        isNavigatingBack = true;
+        backBtn.disabled = true;
+        backBtn.style.pointerEvents = 'none';
+        window.location.href = '/';
+      });
+    }
+  })();
+</script>
+
+
+  <!-- Inactivity -->
+  <script>
+  (function(){
+    let timer;
+    function resetTimer() {
+      clearTimeout(timer);
+      timer = setTimeout(() => { window.location.href = '/'; }, 20000);
+    }
+    ['mousemove','keydown','click','touchstart'].forEach(evt =>
+      document.addEventListener(evt, resetTimer)
+    );
+    resetTimer();
+  })();
+  </script>
+
+  <!-- ===========================
+       NEW: Virtual keypad logic
+       =========================== -->
+  <script>
+  (function(){
+    const grid = document.querySelector('.key-grid');
+    if (!grid) return;
+
+    const input = document.getElementById('code');
+    const form = document.getElementById('verifyForm');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const backspaceKey = document.getElementById('backspaceKey');
+    const clearKey = document.getElementById('clearKey');
+    const submitKey = document.getElementById('submitKey');
+
+    function sanitize(val){
+      return String(val || '').replace(/\D/g,'').slice(0,6);
+    }
+
+    function setValue(next){
+      input.value = sanitize(next);
+    }
+
+    function appendDigit(d){
+      const clean = sanitize(input.value);
+      if (clean.length >= 6) return;
+      setValue(clean + String(d));
+      input.focus({ preventScroll:true });
+      maybeAutoSubmit();
+    }
+
+    function backspaceOnce(){
+      setValue(input.value.slice(0,-1));
+      input.focus({ preventScroll:true });
+    }
+
+    function clearAll(){
+      setValue('');
+      input.focus({ preventScroll:true });
+    }
+
+    function maybeAutoSubmit(){
+      if (/^\d{6}$/.test(input.value)) {
+        // Optional auto-submit; comment out if not desired
+        form.requestSubmit();
+      }
+    }
+
+    // Digits
+    grid.querySelectorAll('[data-digit]').forEach(btn=>{
+      btn.addEventListener('click', ()=> appendDigit(btn.getAttribute('data-digit')));
+    });
+
+    // Backspace (click + press-and-hold)
+    let holdTimer, holdInterval;
+    const startHold = ()=>{
+      backspaceOnce();
+      holdTimer = setTimeout(()=>{ holdInterval = setInterval(backspaceOnce, 60); }, 350);
+    };
+    const endHold = ()=>{
+      clearTimeout(holdTimer); clearInterval(holdInterval);
+    };
+    ['mousedown','touchstart'].forEach(evt => backspaceKey.addEventListener(evt, e => { e.preventDefault(); startHold(); }));
+    ['mouseup','mouseleave','touchend','touchcancel'].forEach(evt => backspaceKey.addEventListener(evt, endHold));
+    backspaceKey.addEventListener('click', e => e.preventDefault());
+
+    // Clear
+    clearKey.addEventListener('click', e => { e.preventDefault(); clearAll(); });
+
+    // Submit
+    submitKey.addEventListener('click', e => { e.preventDefault(); form.requestSubmit(); });
+
+    // Keep field numeric even if user types/pastes
+    input.addEventListener('input', ()=> setValue(input.value));
+    input.addEventListener('paste', (e)=>{
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text') || '';
+      setValue(text);
+      maybeAutoSubmit();
+    });
+  })();
+  </script>
+</body>
+</html>

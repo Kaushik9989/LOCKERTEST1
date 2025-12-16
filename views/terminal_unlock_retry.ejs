@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Locker Retry</title>
+  <style>
+    :root{ --orange:#ff7b00; --orange-dark:#e56e00; --black:#111; --gray:#666; }
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;background:#fff;color:var(--black);padding:24px;}
+    .card{width:100%;max-width:520px;background:#fff;border:1px solid #eee;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.06);text-align:center;}
+    h2{margin:0 0 8px;font-size:1.5rem}
+    p{margin:0 0 14px;color:var(--gray)}
+    .btn{padding:.9rem 1.2rem;border:none;border-radius:12px;font-weight:800;cursor:pointer;font-size:1rem}
+    .btn-primary{background:var(--orange);color:#fff}
+    .btn-primary:hover{background:var(--orange-dark)}
+    .hint{background:#fff7ed;border:1px solid #ffe1c4;border-radius:10px;padding:12px;text-align:left;margin:10px 0}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h2>Locker not opened</h2>
+    <p><%= message %></p>
+    <div class="hint">🔧 <%= hint %></div>
+
+    <form method="post" action="/terminal/parcel/<%= parcelId %>/access">
+      <!-- keep lockerId in case parcel didn’t have it yet -->
+      <input type="hidden" name="lockerId" value="<%= lockerId %>"/>
+      <button class="btn btn-primary" type="submit">Locker not unlocked? Click here to try again</button>
+    </form>
+
+    <p style="margin-top:12px;">
+      or <a href="/" style="text-decoration:none;color:#333;font-weight:700;">Go home</a>
+    </p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Droppoint — Drop-off Pricing</title>
+  <style>
+    /* === Warm pastel palette (peach / pink / light coral) — only color changes === */
+    :root{
+      --orange:#FFB199;          /* Peach accent */
+      --orange-dark:#FF8FA3;     /* Warm pink/coral accent */
+      --black:#111;
+      --muted:#7a6b6f;           /* Slightly warmer muted */
+    }
+
+    html,body{
+      height:100%; margin:0;
+      background:linear-gradient(135deg,#FFF1EC 0%, #FFF7F5 40%, #FFFFFF 100%);
+      display:flex; align-items:center; justify-content:center;
+      font-family:Inter,system-ui;
+    }
+
+    .pricing-card{
+      width:100%; max-width:680px; background:#fff;
+      border-radius:24px; padding:2.5rem;
+      box-shadow:0 16px 40px rgba(255,143,163,0.12); /* warm-tinted shadow */
+      text-align:center;
+    }
+
+    h2{margin:0;font-size:2rem;font-weight:800;color:var(--black)}
+    .lead{color:var(--muted);margin:0.5rem 0 2rem;font-size:1.1rem}
+
+    .size-grid{display:flex;gap:1rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap}
+
+    .btn-option{
+      flex:1; min-width:160px; border-radius:18px; padding:1.75rem 1rem;
+      background:#FFF6F2;                /* warmer than the old gray */
+      border:2px solid transparent; font-weight:700; font-size:1.3rem; cursor:pointer;
+      transition:background .2s ease, box-shadow .2s ease;
+    }
+    .btn-option:hover{ box-shadow:0 6px 18px rgba(255,143,163,0.18); }
+    .btn-option span{display:block;font-weight:500;font-size:1rem;color:var(--muted);margin-top:0.25rem}
+
+    .form-group{text-align:left;margin-bottom:2rem}
+    .hours-row{display:flex;align-items:center;gap:1rem;margin-top:0.75rem}
+
+    input[type="range"]{flex:1;height:12px;border-radius:6px;background:#F3E5E1} /* warm track */
+    input[type="range"]::-webkit-slider-thumb{
+      width:28px;height:28px;border-radius:50%;
+      background:var(--orange); border:3px solid #fff;
+    }
+    input[type="range"]::-moz-range-thumb{
+      width:28px;height:28px;border-radius:50%;
+      background:var(--orange); border:3px solid #fff;
+    }
+
+    .hours-value{min-width:80px;text-align:right;font-weight:700;font-size:1.2rem}
+
+    .summary-box{
+      background:#FFF6F2;        /* warm summary panel */
+      border-radius:18px; padding:1.5rem; margin-bottom:1.5rem; text-align:left
+    }
+    .summary-row{display:flex;justify-content:space-between;margin:0.5rem 0;font-size:1rem;color:#3d2f33}
+    .summary-row.total{font-size:1.4rem;font-weight:800;margin-top:0.75rem;color:var(--black)}
+
+    .btn-orange{
+      background:linear-gradient(145deg,var(--orange),var(--orange-dark));
+      color:#fff;border:none;border-radius:18px;font-size:1.3rem;font-weight:800;padding:1.25rem;cursor:pointer;width:100%;
+      box-shadow:0 10px 24px rgba(255,143,163,0.28);
+    }
+    .btn-orange:disabled{opacity:.6;box-shadow:none;cursor:not-allowed}
+
+    /* accessible radio look */
+    .btn-option input { display:none; }
+    .btn-option.active {
+      background:linear-gradient(145deg, #FFE1DA, #FFD6CF);
+      color:#4a3940;
+      box-shadow:0 10px 22px rgba(255,143,163,0.22);
+    }
+   
+  .btn-option.disabled{
+    opacity:.55;
+    cursor:not-allowed;
+    filter:grayscale(10%);
+    box-shadow:none;
+  }
+  .btn-option.disabled:hover{
+    box-shadow:none;
+  }
+  .btn-option.disabled input[type="radio"]{
+    pointer-events:none;
+  }
+
+
+  </style>
+  <style>
+  /* Back button */
+  .pricing-card { position: relative; } /* ensure positioning context */
+  .back {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    color: var(--black);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .12s ease, background .2s ease, border-color .2s ease;
+    box-shadow: 0 2px 8px rgba(16,24,40,.06);
+  }
+  .back:hover { border-color: #d1d5db; }
+  .back:active { transform: translateY(1px); }
+  .back svg { width: 18px; height: 18px; display: block; }
+</style>
+</head>
+<body>
+  <!-- Form posts to server -->
+  <div class="pricing-card">
+    <button id="backBtn" class="back" aria-label="Go back to dropoff">
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+    <path d="M15 6 L9 12 L15 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+  Back
+</button>
+    <h2>Drop-off Pricing</h2>
+    <p class="lead">Select your locker size and duration</p>
+
+    <form id="pricingForm" action="/terminal/dropoff" method="post">
+      <div class="size-grid" role="radiogroup" aria-label="Locker sizes">
+  <!-- Small -->
+  <label class="btn-option <%= availability?.small?.free > 0 ? '' : 'disabled' %>" data-size="small" aria-disabled="<%= availability?.small?.free > 0 ? 'false' : 'true' %>">
+    <input type="hidden" name="phone" value="<%= phone %>">
+    <input type="radio" name="size" value="small" <%= availability?.small?.free > 0 ? '' : 'disabled' %> />
+    Small
+    <span>
+      <% if (availability?.small?.free > 0) { %>
+        ₹5/hr • <%= availability.small.free %>/<%= availability.small.total %> available
+      <% } else { %>
+        Not available
+      <% } %>
+    </span>
+  </label>
+
+  <!-- Medium -->
+  <label class="btn-option <%= availability?.medium?.free > 0 ? '' : 'disabled' %>" data-size="medium" aria-disabled="<%= availability?.medium?.free > 0 ? 'false' : 'true' %>">
+    <input type="radio" name="size" value="medium" <%= availability?.medium?.free > 0 ? '' : 'disabled' %> />
+    Medium
+    <span>
+      <% if (availability?.medium?.free > 0) { %>
+        ₹10/hr • <%= availability.medium.free %>/<%= availability.medium.total %> available
+      <% } else { %>
+        Not available
+      <% } %>
+    </span>
+  </label>
+
+  <!-- Large -->
+  <label class="btn-option <%= availability?.large?.free > 0 ? '' : 'disabled' %>" data-size="large" aria-disabled="<%= availability?.large?.free > 0 ? 'false' : 'true' %>">
+    <input type="radio" name="size" value="large" <%= availability?.large?.free > 0 ? '' : 'disabled' %> />
+    Large
+    <span>
+      <% if (availability?.large?.free > 0) { %>
+        ₹20/hr • <%= availability.large.free %>/<%= availability.large.total %> available
+      <% } else { %>
+        Not available
+      <% } %>
+    </span>
+  </label>
+</div>
+
+
+      <div class="form-group">
+        <label for="hours">Select duration (hours):</label>
+        <div class="hours-row">
+          <input id="hours" name="hours" type="range" min="1" max="72" value="1" oninput="document.getElementById('hoursValue').textContent=this.value+' hr'+(this.value>1?'s':'')">
+          <div id="hoursValue" class="hours-value">1 hr</div>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-row"><span>Size</span><span id="sum-size">—</span></div>
+        <div class="summary-row"><span>Rate</span><span id="sum-rate">—</span></div>
+        <div class="summary-row"><span>Hours</span><span id="sum-hours">1 hr</span></div>
+        <div class="summary-row total"><span>Total</span><span id="sum-total">₹0</span></div>
+        <div class="summary-row" style="font-size:0.9rem;color:var(--muted);"><span>Expires</span><span id="sum-expiry">—</span></div>
+      </div>
+
+      <button id="confirmBtn" class="btn-orange" type="submit" disabled>Confirm Drop-off</button>
+    </form>
+  </div>
+  <script>
+  (function () {
+    const form = document.getElementById('pricingForm');
+    const confirmBtn = document.getElementById('confirmBtn');
+    let isSubmitting = false;
+
+    if (!form || !confirmBtn) return;
+
+    form.addEventListener('submit', function (e) {
+      if (isSubmitting) {
+        // Block any further submissions
+        e.preventDefault();
+        return;
+      }
+
+      isSubmitting = true;
+      confirmBtn.disabled = true;
+      confirmBtn.style.pointerEvents = 'none';
+      confirmBtn.textContent = 'Processing...'; // optional: give feedback
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    const backBtn = document.getElementById('backBtn');
+    if (!backBtn) return;
+    backBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+     
+        window.location.href = '/dropoff';
+      
+    });
+  })();
+</script>
+  <script>
+    // Minimal client JS only for UI (unchanged)
+    (function(){
+      const labels = document.querySelectorAll('.btn-option');
+      const hours = document.getElementById('hours');
+      const sumSize = document.getElementById('sum-size');
+      const sumRate = document.getElementById('sum-rate');
+      const sumHours = document.getElementById('sum-hours');
+      const sumTotal = document.getElementById('sum-total');
+      const sumExpiry = document.getElementById('sum-expiry');
+      const confirmBtn = document.getElementById('confirmBtn');
+
+      const PRICE = { small:10, medium:20, large:30 };
+
+      function updateUI(){
+        const sel = document.querySelector('input[name="size"]:checked');
+        const hrs = Number(hours.value);
+        document.getElementById('hoursValue').textContent = `${hrs} hr${hrs>1?'s':''}`;
+        if(sel){
+          const size = sel.value;
+          const rate = PRICE[size];
+          sumSize.textContent = size.charAt(0).toUpperCase()+size.slice(1);
+          sumRate.textContent = `₹${rate}/hr`;
+          sumHours.textContent = `${hrs} hr${hrs>1?'s':''}`;
+          sumTotal.textContent = `₹${rate*hrs}`;
+          const expires = new Date(Date.now()+hrs*3600000);
+          sumExpiry.textContent = expires.toLocaleString(undefined,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+          confirmBtn.disabled = false;
+        } else {
+          sumSize.textContent = '—'; sumRate.textContent='—'; sumTotal.textContent='₹0'; sumExpiry.textContent='—';
+          confirmBtn.disabled = true;
+        }
+      }
+
+      document.querySelectorAll('.btn-option').forEach(lbl=>{
+        lbl.addEventListener('click', ()=> {
+          document.querySelectorAll('.btn-option').forEach(l=>l.classList.remove('active'));
+          lbl.classList.add('active');
+          lbl.querySelector('input[type="radio"]').checked = true;
+          updateUI();
+        });
+      });
+      hours.addEventListener('input', updateUI);
+      updateUI();
+    })();
+  </script>
+  <script>
+(function(){
+  let timer;
+
+  function resetTimer() {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      window.location.href = '/';
+    }, 20000); // 20 seconds
+  }
+
+  // Reset on any user activity
+  ['mousemove','keydown','click','touchstart'].forEach(evt =>
+    document.addEventListener(evt, resetTimer)
+  );
+
+  // Start immediately
+  resetTimer();
+})();
+</script>
+<script>
+  (function(){
+    const labels = document.querySelectorAll('.btn-option');
+    const hours = document.getElementById('hours');
+    const sumSize = document.getElementById('sum-size');
+    const sumRate = document.getElementById('sum-rate');
+    const sumHours = document.getElementById('sum-hours');
+    const sumTotal = document.getElementById('sum-total');
+    const sumExpiry = document.getElementById('sum-expiry');
+    const confirmBtn = document.getElementById('confirmBtn');
+
+    // If you passed PRICE from server, you can use that; else keep hardcoded
+    const PRICE = window.PRICE || { small:5, medium:10, large:20 };
+
+    function updateUI(){
+      const sel = document.querySelector('input[name="size"]:checked');
+      const hrs = Number(hours.value);
+      document.getElementById('hoursValue').textContent = `${hrs} hr${hrs>1?'s':''}`;
+      if(sel && !sel.disabled){
+        const size = sel.value;
+        const rate = PRICE[size];
+        sumSize.textContent = size.charAt(0).toUpperCase()+size.slice(1);
+        sumRate.textContent = `₹${rate}/hr`;
+        sumHours.textContent = `${hrs} hr${hrs>1?'s':''}`;
+        sumTotal.textContent = `₹${rate*hrs}`;
+        const expires = new Date(Date.now()+hrs*3600000);
+        sumExpiry.textContent = expires.toLocaleString(undefined,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        confirmBtn.disabled = false;
+      } else {
+        sumSize.textContent = '—'; sumRate.textContent='—'; sumTotal.textContent='₹0'; sumExpiry.textContent='—';
+        confirmBtn.disabled = true;
+      }
+    }
+
+    document.querySelectorAll('.btn-option').forEach(lbl=>{
+      lbl.addEventListener('click', (e)=> {
+        if (lbl.classList.contains('disabled')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        document.querySelectorAll('.btn-option').forEach(l=>l.classList.remove('active'));
+        lbl.classList.add('active');
+        const radio = lbl.querySelector('input[type="radio"]');
+        if (radio && !radio.disabled) radio.checked = true;
+        updateUI();
+      });
+    });
+
+    hours.addEventListener('input', updateUI);
+    updateUI();
+  })();
+</script>
+
+</body>
+</html>

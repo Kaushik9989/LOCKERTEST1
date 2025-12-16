@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Confirm Phone</title>
+
+  <!-- Color scheme + theme-color for better address bar tinting -->
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0b0c" />
+
+  <style>
+    /* =============================
+       Design Tokens
+       ============================= */
+    :root {
+      /* Brand */
+      --brand: #ff7b00;
+      --brand-600: #ff7b00;
+      --brand-700: #e56e00;
+      --brand-50: #fff7ef;
+
+      /* Surfaces */
+      --bg: #ffffff;
+      --bg-subtle: #fafafa;
+      --elev: #ffffff;
+      --border: #e9e9ee;
+      --text: #121212;
+      --muted: #6b7280;
+
+      /* WhatsApp accent */
+      --wa: #25D366;
+      --wa-700: #1fb055;
+
+      /* System */
+      --radius: 16px;
+      --radius-sm: 12px;
+      --touch: 56px;
+
+      /* Shadows */
+      --shadow-sm: 0 2px 8px rgba(16, 24, 40, 0.06);
+      --shadow-md: 0 10px 30px rgba(16, 24, 40, 0.08);
+      --shadow-lg: 0 18px 50px rgba(16, 24, 40, 0.12);
+
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #0b0b0c;
+        --bg-subtle: #0f1012;
+        --elev: #111214;
+        --border: #23252a;
+        --text: #f3f4f6;
+        --muted: #9aa0a6;
+        --brand-50: #26190d;
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+        --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
+        --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 80% -10%, var(--brand-50), transparent 50%),
+                  radial-gradient(900px 600px at -10% 90%, var(--bg-subtle), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px env(safe-area-inset-left) 24px env(safe-area-inset-right);
+    }
+
+    .card {
+      position: relative;
+      width: 100%;
+      max-width: 840px; /* NEW: widened to accommodate keypad */
+      padding: clamp(18px, 4vw, 28px);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.85)) padding-box,
+        linear-gradient(180deg, rgba(255, 123, 0, 0.25), rgba(255, 123, 0, 0)) border-box;
+      border: 1px solid transparent;
+      box-shadow: var(--shadow-md);
+      backdrop-filter: saturate(1.1) blur(6px);
+      -webkit-backdrop-filter: saturate(1.1) blur(6px);
+    }
+
+    @media (prefers-color-scheme: light) {
+      .card {
+        background:
+          linear-gradient(180deg, rgba(17, 18, 20, 0.85), rgba(17, 18, 20, 0.8)) padding-box,
+          linear-gradient(180deg, rgba(255, 123, 0, 0.25), rgba(255, 123, 0, 0)) border-box;
+      }
+    }
+
+    /* NEW: two-column layout for form + keypad */
+    .content-grid {
+      display: grid;
+      gap: 18px;
+      align-items: start;
+    }
+    @media (min-width: 760px) {
+      .content-grid {
+        grid-template-columns: 1fr 300px; /* form | keypad */
+      }
+    }
+
+    .back {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--bg), var(--bg-subtle));
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: transform .12s ease, background .2s ease, border-color .2s ease;
+    }
+    .back:active { transform: translateY(1px); }
+    .back:hover { border-color: color-mix(in oklab, var(--brand-600) 25%, var(--border)); }
+    .back svg { width: 18px; height: 18px; display: block; }
+
+    h3 {
+      margin: 10px 0 6px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+      text-align: center;
+    }
+
+    p.text-muted {
+      margin: 0 0 1.1rem;
+      color: var(--muted);
+      font-size: clamp(.95rem, 2vw, 1rem);
+      text-align: center;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+      font-size: 0.98rem;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: stretch;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--elev), var(--bg-subtle));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), var(--shadow-sm);
+      height: 56px;
+      overflow: clip;
+    }
+
+    .input-group-text {
+      min-width: 74px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0 12px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      color: #fff;
+      background: linear-gradient(180deg, color-mix(in oklab, var(--brand-600) 92%, white), var(--brand-700));
+    }
+
+    .form-control {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      flex: 1;
+      background: transparent;
+      padding: 0 14px;
+      font-size: 1.05rem;
+      color: var(--text);
+      outline: none;
+    }
+
+    .hint { font-size: .9rem; color: var(--muted); margin-top: .6rem; text-align: center; }
+
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 1rem; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 0 16px;
+      height: var(--touch);
+      width: 100%;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      font-weight: 800;
+      letter-spacing: .02em;
+      cursor: pointer;
+      transition: transform .12s ease, filter .2s ease, box-shadow .2s ease;
+      box-shadow: var(--shadow-sm);
+      will-change: transform;
+    }
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(180deg, color-mix(in oklab, var(--brand-600) 96%, white), var(--brand-700));
+    }
+    .btn-primary:hover { filter: brightness(1.02); box-shadow: var(--shadow-md); }
+
+    .btn-wa {
+      color: #fff;
+      background: linear-gradient(180deg, color-mix(in oklab, var(--wa) 94%, white), var(--wa-700));
+    }
+    .btn-wa:hover { filter: brightness(1.02); box-shadow: var(--shadow-md); }
+
+    .btn .spinner { display: none; width: 18px; height: 18px; }
+    .btn[aria-busy="true"] .spinner { display: inline-block; }
+    .btn[aria-busy="true"] .label { opacity: .8; }
+
+    .footer {
+      margin-top: 14px; text-align: center; color: var(--muted); font-size: 0.92rem;
+    }
+    .footer a { color: inherit; font-weight: 700; text-decoration: none; border-bottom: 1px dashed currentColor; }
+    .footer a:hover { opacity: .9; }
+
+    @media (min-width: 440px) {
+      .card { padding: clamp(22px, 4.6vw, 32px); }
+      .input-group { height: 60px; }
+      .btn { height: 58px; }
+    }
+
+    /* Focus styles */
+    .back:focus, .form-control:focus, .btn:focus, .key:focus {
+      outline: 3px solid color-mix(in oklab, var(--brand-600) 25%, transparent);
+      outline-offset: 2px;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+
+    /* Small helper for visually hidden text */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    /* =============================
+       NEW: Virtual Keypad styles
+       ============================= */
+    .keypad {
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--elev), var(--bg-subtle));
+      box-shadow: var(--shadow-sm);
+      padding: 12px;
+    }
+
+    .key-grid {
+      
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .key {
+      background-color: white;
+      user-select: none;
+      -webkit-user-select: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 56px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      font-weight: 800;
+      font-size: 1.05rem;
+      cursor: pointer;
+      transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
+    }
+
+    .key:active { transform: translateY(1px); }
+
+    .key.action {
+      background-color: white;
+      font-weight: 700;
+    }
+
+    .key.wide {
+      background-color: white;
+      grid-column: span 2;
+    }
+
+    .key[disabled] {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .key svg {
+      width: 20px;
+      height: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <div class="card" role="form" aria-labelledby="confirm-title">
+      <button id="backBtn" class="back" aria-label="Go back to dropoff">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M15 6 L9 12 L15 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Back
+      </button>
+
+      <h3 id="confirm-title">Confirm your phone</h3>
+      <p class="text-muted">We will send an OTP to verify your phone before payment.</p>
+
+      <!-- NEW: wrap form + keypad in grid -->
+      <div class="content-grid">
+        <!-- Left: Form -->
+        <form id="phoneForm" method="post" action="" autocomplete="off" novalidate>
+          <div class="mb-3">
+            <label class="form-label" for="phone">Phone</label>
+            <div class="input-group" role="group" aria-label="Phone input">
+              <span class="input-group-text" aria-hidden="true">+91</span>
+              <input id="phone" name="phone" type="tel" inputmode="numeric" maxlength="10" class="form-control"
+                placeholder="Enter 10-digit number" required aria-required="true" aria-describedby="phoneHelp" />
+            </div>
+            <div id="phoneHelp" class="hint">Enter a 10-digit mobile number (no spaces).</div>
+          </div>
+
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" id="sendSmsBtn">
+              <svg class="spinner" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round">
+                  <animate attributeName="stroke-dasharray" dur="1s" repeatCount="indefinite" values="1,150;90,150;90,150" />
+                  <animate attributeName="stroke-dashoffset" dur="1s" repeatCount="indefinite" values="0;-35;-124" />
+                </circle>
+              </svg>
+              <span class="label">Send via SMS</span>
+            </button>
+            <button type="submit" class="btn btn-wa" id="sendWhatsappBtn" aria-label="Send OTP via WhatsApp">
+              <svg class="spinner" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round">
+                  <animate attributeName="stroke-dasharray" dur="1s" repeatCount="indefinite" values="1,150;90,150;90,150" />
+                  <animate attributeName="stroke-dashoffset" dur="1s" repeatCount="indefinite" values="0;-35;-124" />
+                </circle>
+              </svg>
+              <span class="label">Send via WhatsApp</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Right: Virtual Keypad (NEW) -->
+        <section class="keypad" aria-label="Virtual keypad for phone number entry">
+          <div class="key-grid">
+            <!-- Row 1 -->
+            <button type="button" class="key" data-digit="1" aria-label="1">1</button>
+            <button type="button" class="key" data-digit="2" aria-label="2">2</button>
+            <button type="button" class="key" data-digit="3" aria-label="3">3</button>
+            <!-- Row 2 -->
+            <button type="button" class="key" data-digit="4" aria-label="4">4</button>
+            <button type="button" class="key" data-digit="5" aria-label="5">5</button>
+            <button type="button" class="key" data-digit="6" aria-label="6">6</button>
+            <!-- Row 3 -->
+            <button type="button" class="key" data-digit="7" aria-label="7">7</button>
+            <button type="button" class="key" data-digit="8" aria-label="8">8</button>
+            <button type="button" class="key" data-digit="9" aria-label="9">9</button>
+            <!-- Row 4 -->
+            <button type="button" class="key action wide" id="clearKey" aria-label="Clear">Clear</button>
+            <button type="button" class="key" data-digit="0" aria-label="0">0</button>
+            <button type="button" class="key action" id="backspaceKey" aria-label="Backspace">
+              <!-- Backspace icon -->
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 12l5.5-6H21a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8.5L3 12z" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M14 9l4 4M18 9l-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div class="footer">Need help? <a href="/help">Contact support</a></div>
+    </div>
+  </main>
+
+<script>
+  const phoneInput = document.getElementById('phone');
+  const form = document.getElementById('phoneForm');
+  const smsBtn = document.getElementById('sendSmsBtn');
+  const whatsappBtn = document.getElementById('sendWhatsappBtn');
+  const backBtn = document.getElementById('backBtn');
+
+  // one-shot flags
+  let isSubmitting = false;
+  let isNavigatingBack = false;
+
+  // Allow only digits and max 10
+  phoneInput.addEventListener('input', () => {
+    phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+    reflectLengthState();
+  });
+
+  // Decide route based on button
+  smsBtn.addEventListener('click', () => {
+    if (isSubmitting) return; // block if already submitting
+    form.action = '/send-otp/sms';
+  });
+  whatsappBtn.addEventListener('click', () => {
+    if (isSubmitting) return; // block if already submitting
+    form.action = '/send-otp/whatsapp';
+  });
+
+  function setBusy(btn, busy) {
+    if (!btn) return;
+    if (busy) {
+      btn.setAttribute('aria-busy', 'true');
+      btn.setAttribute('disabled', 'disabled');
+      btn.style.pointerEvents = 'none';
+    } else {
+      btn.removeAttribute('aria-busy');
+      btn.removeAttribute('disabled');
+      btn.style.pointerEvents = '';
+    }
+  }
+
+  // Validation on form submit
+  form.addEventListener('submit', (e) => {
+    // prevent double submit
+    if (isSubmitting) {
+      e.preventDefault();
+      return;
+    }
+
+    const v = phoneInput.value;
+
+    // basic validation
+    if (v.length !== 10) {
+      e.preventDefault();
+      phoneInput.focus();
+      phoneInput.setAttribute('aria-invalid', 'true');
+      phoneInput.style.boxShadow = '0 0 0 4px rgba(255,123,0,0.18)';
+      setTimeout(() => {
+        phoneInput.style.boxShadow = '';
+        phoneInput.removeAttribute('aria-invalid');
+      }, 1400);
+      return;
+    }
+
+    // from here onwards, we treat as one-shot submit
+    isSubmitting = true;
+
+    // Lock both buttons during submit to prevent double posts
+    setBusy(smsBtn, true);
+    setBusy(whatsappBtn, true);
+
+    // Keep the raw 10-digit number in the input
+    phoneInput.value = v;
+    clearTimeout(window.__inactivityTimer);
+  });
+
+  // Back button -> /dropoff (one-shot)
+  backBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (isNavigatingBack) return;
+    isNavigatingBack = true;
+    backBtn.setAttribute('disabled', 'disabled');
+    backBtn.style.pointerEvents = 'none';
+    window.location.href = '/dropoff';
+  });
+
+  // Enter key = submit default (SMS)
+  phoneInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (isSubmitting) return;
+      smsBtn.click();
+      form.requestSubmit(smsBtn); // explicitly submit via SMS
+    }
+  });
+
+  // INACTIVITY TIMER
+  (function () {
+    const TIMEOUT_MS = 20000;
+    const events = ['mousemove', 'keydown', 'touchstart', 'click'];
+    function resetTimer() {
+      if (window.__inactivityTimer) clearTimeout(window.__inactivityTimer);
+      window.__inactivityTimer = setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          window.location.href = '/';
+        }
+      }, TIMEOUT_MS);
+    }
+    events.forEach(evt => document.addEventListener(evt, resetTimer, { passive: true }));
+    resetTimer();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        if (window.__inactivityTimer) clearTimeout(window.__inactivityTimer);
+      } else {
+        resetTimer();
+      }
+    });
+  })();
+
+  /* ===========================================
+     Virtual keypad logic
+     =========================================== */
+  const keypad = document.querySelector('.keypad');
+  const digitKeys = keypad.querySelectorAll('[data-digit]');
+  const backspaceKey = document.getElementById('backspaceKey');
+  const clearKey = document.getElementById('clearKey');
+
+  function appendDigit(d) {
+    const clean = phoneInput.value.replace(/\D/g, '');
+    if (clean.length >= 10) return;
+    phoneInput.value = (clean + String(d)).slice(0, 10);
+    phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function backspaceOnce() {
+    phoneInput.value = phoneInput.value.slice(0, -1);
+    phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function clearAll() {
+    phoneInput.value = '';
+    phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // Reflect 10-digit completion by disabling extra keys (optional nicety)
+  function reflectLengthState() {
+    const full = phoneInput.value.length >= 10;
+    digitKeys.forEach(k => k.disabled = full);
+  }
+  reflectLengthState();
+
+  // Click handlers for digits
+  digitKeys.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (isSubmitting) return; // if already submitting, ignore keypad
+      appendDigit(btn.dataset.digit);
+      phoneInput.focus({ preventScroll: true });
+    });
+  });
+
+  // Backspace: click + press-and-hold repeat
+  let backspaceTimer, backspaceInterval;
+  const startBackspace = () => {
+    if (isSubmitting) return;
+    backspaceOnce();
+    backspaceTimer = setTimeout(() => {
+      backspaceInterval = setInterval(backspaceOnce, 60);
+    }, 350);
+  };
+  const stopBackspace = () => {
+    clearTimeout(backspaceTimer);
+    clearInterval(backspaceInterval);
+  };
+  ['mousedown', 'touchstart'].forEach(evt =>
+    backspaceKey.addEventListener(evt, (e) => { e.preventDefault(); startBackspace(); })
+  );
+  ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(evt =>
+    backspaceKey.addEventListener(evt, stopBackspace)
+  );
+  backspaceKey.addEventListener('click', (e) => {
+    e.preventDefault(); // click already handled by mousedown
+  });
+
+  // Clear
+  clearKey.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    clearAll();
+    phoneInput.focus({ preventScroll: true });
+  });
+
+  // Prevent accidental non-digit paste
+  phoneInput.addEventListener('paste', (e) => {
+    if (isSubmitting) {
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text') || '';
+    const digits = text.replace(/\D/g, '').slice(0, 10);
+    phoneInput.value = digits;
+    phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+</script>
+
+</body>
+
+</html>

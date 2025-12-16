@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Locker Emulator</title>
+
+  <!-- Icons & CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <!-- HTML5 QR Code library -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    /* Page Theme */
+    body {
+      background: radial-gradient(circle at 15% 20%, rgba(0, 119, 255, 0.35), transparent 50%),
+        radial-gradient(circle at 85% 25%, rgba(255, 0, 128, 0.3), transparent 50%),
+        radial-gradient(circle at 50% 80%, rgba(255, 230, 0, 0.25), transparent 55%),
+        radial-gradient(circle at center, rgba(0, 255, 157, 0.2), transparent 60%),
+        #00040d;
+      background-size: 400% 400%;
+      animation: gradientFlow 12s ease infinite;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+    }
+
+    h3,
+    .card-header {
+      color: #ffae42;
+    }
+
+    small,
+    .text-muted {
+      color: #bbb !important;
+    }
+
+    /* QR container */
+    #qr-reader {
+      border-radius: .75rem;
+      overflow: hidden;
+      background-color: #111 !important;
+      border: 2px solid #ff6600;
+      box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
+    }
+
+    /* Force QR scanner dark */
+    #qr-reader__scan_region,
+    #qr-reader__dashboard_section,
+    .html5-qrcode,
+    .html5-qrcode-element {
+      background: #111 !important;
+      color: #ffae42 !important;
+    }
+
+    #qr-reader video {
+      width: 100% !important;
+      height: auto !important;
+      object-fit: cover;
+    }
+
+    .html5-qrcode-element button {
+      background: #222 !important;
+      color: #ffae42 !important;
+      border: 1px solid #ff6600 !important;
+      border-radius: .5rem !important;
+      padding: .4rem .8rem;
+      transition: all 0.2s ease;
+    }
+
+    .html5-qrcode-element button:hover {
+      background: #ff6600 !important;
+      color: #111 !important;
+      box-shadow: 0 0 12px #ff6600;
+    }
+
+    .html5-qrcode-close-button {
+      display: none !important;
+    }
+
+    /* Card style */
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #ff6600;
+      box-shadow: 0 0 15px rgba(255, 102, 0, 0.3);
+      color: #eee;
+    }
+
+    .card-header {
+      background: #111;
+      border-bottom: 1px solid #ff6600;
+    }
+
+    /* Alert style */
+    .alert {
+      background: #111;
+      border: 1px solid #ff6600;
+      color: #ffae42;
+      box-shadow: 0 0 12px rgba(255, 102, 0, 0.4);
+    }
+
+    /* 3D Locker */
+    .locker-scene {
+      perspective: 800px;
+      margin: 0 auto;
+      width: 220px;
+      height: 160px;
+    }
+
+    .locker {
+      position: relative;
+      width: 220px;
+      height: 160px;
+      margin: 0 auto;
+      transform-style: preserve-3d;
+      transform: rotateY(-12deg) rotateX(5deg);
+    }
+
+    .locker .box {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+    }
+
+    .panel {
+      position: absolute;
+      background: #1f1f1f;
+      border: 2px solid #ff6600;
+      box-shadow: inset -6px -6px 12px rgba(255, 102, 0, 0.2), 0 0 10px rgba(255, 102, 0, 0.4);
+    }
+
+    .panel.back {
+      width: 220px;
+      height: 160px;
+      transform: translateZ(-60px);
+    }
+
+    .panel.bottom {
+      width: 220px;
+      height: 120px;
+      transform: rotateX(-90deg) translateZ(60px);
+      transform-origin: top;
+    }
+
+    .panel.top {
+      width: 220px;
+      height: 120px;
+      transform: rotateX(90deg) translateZ(100px);
+      transform-origin: bottom;
+    }
+
+    .panel.left {
+      width: 120px;
+      height: 160px;
+      transform: rotateY(90deg) translateZ(110px);
+      transform-origin: left;
+    }
+
+    .panel.right {
+      width: 120px;
+      height: 160px;
+      transform: rotateY(-90deg) translateZ(110px);
+      transform-origin: right;
+    }
+
+    /* Door */
+    .door {
+      position: absolute;
+      width: 220px;
+      height: 160px;
+      transform-origin: left center;
+      transform: rotateY(0deg) translateZ(60px);
+      background: linear-gradient(145deg, #2b1a00, #1a0e00);
+      border: 2px solid #ff6600;
+      border-left-width: 6px;
+      box-shadow: inset -6px -6px 12px rgba(255, 102, 0, 0.2), 0 0 20px rgba(255, 102, 0, 0.5);
+    }
+
+    .door::after {
+      content: "";
+      position: absolute;
+      right: 18px;
+      top: 70px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ffae42;
+      box-shadow: 0 0 10px #ff6600 inset, 0 0 10px #ff6600;
+    }
+
+    .door .mesh-window {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 16px;
+      bottom: 16px;
+      background: repeating-linear-gradient(45deg, rgba(255, 102, 0, 0.25), rgba(255, 102, 0, 0.25) 2px, transparent 2px, transparent 4px),
+        repeating-linear-gradient(-45deg, rgba(255, 102, 0, 0.25), rgba(255, 102, 0, 0.25) 2px, transparent 2px, transparent 4px);
+      border: 1px solid rgba(255, 102, 0, 0.5);
+      border-radius: 3px;
+      box-shadow: inset 0 0 6px rgba(255, 102, 0, 0.5);
+    }
+
+    .open .door {
+      animation: door-open 1.2s ease forwards;
+    }
+
+    @keyframes door-open {
+      to {
+        transform: rotateY(-105deg) translateZ(60px);
+      }
+    }
+
+    /* Floating */
+    .floaty {
+      animation: floaty 3s ease-in-out infinite;
+    }
+
+    @keyframes floaty {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
+    /* Modal */
+    .modal-content {
+      background: #111;
+      color: #ffae42;
+      border: 2px solid #ff6600;
+      box-shadow: 0 0 25px rgba(255, 102, 0, 0.8);
+    }
+
+    .go-back-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #ff6600, #ffae42);
+      color: #111;
+      font-weight: bold;
+      border: none;
+      border-radius: 12px;
+      padding: 0.6rem 1.2rem;
+      font-size: 1.1rem;
+      box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
+      transition: all 0.25s ease-in-out;
+      cursor: pointer;
+    }
+
+    .go-back-btn:hover {
+      background: linear-gradient(135deg, #ffae42, #ff6600);
+      color: #111;
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(255, 174, 66, 0.9);
+    }
+
+    .go-back-btn i {
+      font-size: 1.2rem;
+    }
+  </style>
+
+  <style>
+    body {
+      background: radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.992), transparent 50%),
+        radial-gradient(circle at 85% 25%, rgba(255, 255, 255, 0.3), transparent 50%),
+        radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.25), transparent 55%),
+        radial-gradient(circle at center, rgba(0, 255, 157, 0.2), transparent 60%),
+        #00040d;
+      background-size: 400% 400%;
+      animation: gradientFlow 12s ease infinite;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .cta-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 1.5rem;
+      padding: 2rem;
+      box-shadow: 0 0 35px rgba(0, 255, 255, 0.6);
+      backdrop-filter: blur(15px);
+    }
+
+    .option-card {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 1rem;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+      backdrop-filter: blur(8px);
+    }
+
+    .option-card:hover {
+      transform: translateY(-8px) scale(1.03);
+      box-shadow: 0 0 35px rgba(0, 255, 255, 0.9);
+    }
+
+    .option-card i {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: cyan;
+    }
+
+    .cta-button {
+      background: linear-gradient(135deg, #00ffff, #0077ff);
+      color: #fff;
+      border: none;
+      padding: 0.8rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    .cta-button:hover {
+      transform: scale(1.05);
+      background: linear-gradient(135deg, #0077ff, #00ffff);
+    }
+
+    .compartment-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #fff;
+      height: 140px;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+    }
+
+    .badge-available {
+      background: rgba(0, 200, 0, 0.8);
+    }
+
+    .badge-booked {
+      background: rgba(255, 165, 0, 0.9);
+    }
+
+    .badge-locked {
+      background: rgba(255, 0, 0, 0.8);
+    }
+
+    .status-tag-wrapper {
+      margin-top: 0.8rem;
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .status-tag {
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      border-radius: 0.5rem;
+      padding: 0.25rem 0.6rem;
+      display: inline-block;
+    }
+
+    .status-tag.available {
+      background: rgba(0, 255, 128, 0.15);
+      color: #00ff99;
+      border: 1px solid #00ff99;
+    }
+
+    .status-tag.locked {
+      background: rgba(255, 0, 0, 0.15);
+      color: #ff4d4d;
+      border: 1px solid #ff4d4d;
+    }
+
+    .status-tag.booked {
+      background: rgba(255, 165, 0, 0.15);
+      color: #ffae42;
+      border: 1px solid #ffae42;
+    }
+
+    .access-fab {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #00ffff, #0077ff);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      z-index: 1050;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+
+    .access-fab:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    .access-fab i {
+      font-size: 1.1rem;
+    }
+
+    @media (max-width: 575px) {
+      .access-fab {
+        right: 14px;
+        bottom: 14px;
+        width: 42px;
+        height: 42px;
+      }
+    }
+
+
+    /* Compartment card states */
+    .compartment-card.available {
+      background: rgba(0, 255, 128, 0.08);
+      border: 1px solid #00ff99;
+      box-shadow: 0 0 15px rgba(0, 255, 128, 0.6);
+    }
+
+    .compartment-card.booked {
+      background: rgba(255, 0, 0, 0.08);
+      border: 1px solid #ff4d4d;
+      box-shadow: 0 0 15px rgba(255, 77, 77, 0.6);
+    }
+
+    /* Counter badges */
+    /* Compartment summary counter */
+    #compartment-counter {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.4rem 0.8rem;
+      border-radius: 0.6rem;
+      box-shadow: 0 0 12px rgba(0, 255, 255, 0.25);
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    #compartment-counter span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    #compartment-counter .text-danger {
+      color: #ff4d4d !important;
+    }
+
+    #compartment-counter .text-success {
+      color: #00ff99 !important;
+    }
+
+    #compartment-counter .mx-1 {
+      color: #888;
+      font-weight: 400;
+    }
+
+    /* Compartment Card Redesign */
+    .compartment-card {
+      position: relative;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 1rem;
+      padding: 1.2rem;
+      text-align: center;
+      font-size: 0.95rem;
+      color: #fff;
+      height: 160px;
+      box-shadow: 0 0 18px rgba(0, 255, 255, 0.2);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Hover effect */
+    .compartment-card:hover {
+      transform: translateY(-6px) scale(1.03);
+      box-shadow: 0 0 25px rgba(0, 255, 255, 0.45);
+    }
+
+    /* Status-based backgrounds */
+    .compartment-card.available {
+      background: rgba(0, 255, 128, 0.08);
+      border: 1px solid #00ff99;
+      box-shadow: 0 0 18px rgba(0, 255, 128, 0.35);
+    }
+
+    .compartment-card.booked {
+      background: rgba(255, 77, 77, 0.08);
+      border: 1px solid #ff4d4d;
+      box-shadow: 0 0 18px rgba(255, 77, 77, 0.35);
+    }
+
+    /* Compartment title */
+    .compartment-card h6 {
+      margin-bottom: 0.4rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #00eaff;
+    }
+
+    /* Size text */
+    .compartment-card p {
+      margin: 0.3rem 0;
+      font-size: 0.85rem;
+      color: #bbb;
+    }
+
+    /* Status tag */
+    .compartment-card .status-tag-wrapper {
+      margin-top: 0.6rem;
+    }
+
+    .compartment-card .status-tag {
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      border-radius: 0.5rem;
+      padding: 0.3rem 0.7rem;
+      display: inline-block;
+    }
+
+    .compartment-card .status-tag.available {
+      background: rgba(0, 255, 128, 0.12);
+      color: #00ff99;
+      border: 1px solid #00ff99;
+    }
+
+    .compartment-card .status-tag.booked {
+      background: rgba(255, 77, 77, 0.12);
+      color: #ff4d4d;
+      border: 1px solid #ff4d4d;
+    }
+
+    /* Lock icon on top */
+    .status-emoji {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container py-3">
+   <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex align-items-center gap-3">
+    <img src="/images/droppointlogo.png" style="height: 70px; width: 180px;">
+    <small class="text-muted">Locker ID: <%= lockerId %></small>
+  </div>
+
+  <!-- Go Back button -->
+  <button onclick="window.location.href='/'" 
+          class="btn btn-sm go-back-btn d-flex align-items-center gap-1">
+    <i class="bi bi-arrow-left-circle"></i> Go Back
+  </button>
+</div>
+
+    <!-- Scanner Row (centered) -->
+    <div class="row g-3 justify-content-center">
+      <div class="col-lg-9">
+        <div class="card mb-3 shadow-sm mt-1">
+
+          <div class="card-header d-flex align-items-center">
+            <i class="bi bi-qr-code-scan me-2"></i> QR Scanner
+          </div>
+          <div class="card-body d-flex flex-column align-items-center justify-content-center">
+            <!-- ✅ USB QR reader hidden input (keeps focus) -->
+            <input id="usb-qr-input" type="text" autocomplete="off" inputmode="none"
+              style="opacity:0; position:absolute; left:-9999px; width:0; height:0;" />
+            <!-- (optional) show the last captured access code -->
+            <div class="small text-muted mb-2">Access Code: <span id="usb-access-code">—</span></div>
+            <!-- Camera scanner container -->
+            <div id="qr-reader" class="border border-secondary rounded" style="height: 450px;"></div>
+            <div id="qr-status" class="mt-2 text-muted small">Initializing scanner…</div>
+            <div class="mt-3 alert alert-warning py-2 mb-0 d-flex align-items-center justify-content-center">
+              <i class="bi bi-shield-lock-fill me-2"></i>
+              <small class="mb-0">Secure Mode: QR Authentication Required</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+
+    </div>
+  </div>
+
+  <!-- Parcel Already Picked Modal -->
+  <div class="modal fade" id="parcelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content"
+        style="background:#1a1a1a; color:white; border-radius:12px; text-align:center; box-shadow:0 0 25px rgba(255,140,0,0.8);">
+        <div class="modal-body p-4">
+          <i class="fa-solid fa-box-open fa-3x mb-3" style="color:#ff6600;"></i>
+          <h4>Parcel Already Picked</h4>
+          <p class="mt-2">This parcel has already been collected earlier.</p>
+          <button class="btn btn-warning mt-3" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Locker Assigned Modal -->
+  <div class="modal fade" id="lockerAssignedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-center">
+        <div class="modal-header border-0">
+          <h5 class="modal-title w-100"><i class="bi bi-box-seam-fill text-success me-2"></i> Locker Assigned</h5>
+        </div>
+        <div class="modal-body">
+          <div class="floaty">
+            <h1 id="assignedLockerId" class="display-3 fw-bold text-warning">--</h1>
+            <p id="lockerActionText" class="text-muted mb-3">Proceed to your locker</p>
+            <div class="locker-scene mt-2">
+              <div id="locker3D" class="locker">
+                <div class="box">
+                  <div class="panel back"></div>
+                  <div class="panel bottom"></div>
+                  <div class="panel top"></div>
+                  <div class="panel left"></div>
+                  <div class="panel right"></div>
+                  <div class="door">
+                    <div class="mesh-window"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="lockerSubNote" class="mt-3 small text-muted">Door will open automatically</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- No Compartment Available Modal -->
+  <div class="modal fade" id="noCompartmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-center p-4"
+        style="background:#1a1a1a; color:white; border-radius:12px; box-shadow:0 0 25px rgba(255,0,0,0.8);">
+        <div class="modal-body">
+          <i class="fa-solid fa-triangle-exclamation fa-3x mb-3" style="color:#ff3333;"></i>
+          <h4>No Compartment Available</h4>
+          <p class="mt-2">No locker is available for this parcel size.</p>
+          <button class="btn btn-danger mt-3" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <a href="/accessCode" style="text-decoration: none;"><button id="access-fab" class="access-fab"
+      aria-label="Enter Access Code" title="Enter Access Code">
+      <i class="bi bi-key"></i>
+    </button></a>
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+
+
+
+  <script>
+    function goBack() { window.location.href = '/'; }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const statusEl = document.getElementById("qr-status");
+      const lockerId = "<%= lockerId %>";
+
+      // fallback container for USB scanner message
+      const qrReader = document.getElementById("qr-reader");
+
+      Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+          // ✅ Camera available → start scanner
+          const scanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 230 }, false);
+
+          window.restartScanner = (msg = null) => {
+            if (msg) {
+              statusEl.textContent = `⚠️ ${msg}`;
+              statusEl.className = "mt-2 small text-warning";
+            }
+            Promise.resolve()
+              .then(() => scanner.clear())
+              .catch(() => { })
+              .finally(() => {
+                statusEl.textContent = "Scanner ready. Show QR code.";
+                statusEl.className = "mt-2 small text-muted";
+                scanner.render(onScanSuccess);
+              });
+          };
+
+          function handleApi(accessCode) {
+            statusEl.textContent = "Processing QR code…";
+            statusEl.className = "mt-2 small text-primary";
+            return fetch('/api/locker/scan', {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: `${accessCode}///${lockerId}`
+            })
+              .then(res => res.json().then(data => ({ ok: res.ok, data, status: res.status })))
+              .then(({ ok, data, status }) => {
+                if (!ok || !data.success) {
+                  if (data.message && data.message.includes("already been picked")) {
+                    new bootstrap.Modal(document.getElementById('parcelModal')).show();
+                  } else if (data.message && data.message.includes("No available compartments")) {
+                    new bootstrap.Modal(document.getElementById('noCompartmentModal')).show();
+                  } else {
+                    throw new Error(data.message || `Request failed (${status})`);
+                  }
+                  return;
+                }
+                if (data && data.success && data.compartmentId) {
+                  const status = data.parcelStatus || "";
+                  if (status === "picked") {
+                    new bootstrap.Modal(document.getElementById('parcelModal')).show();
+                  } else if (status === "awaiting_drop") {
+                    showAssignedModal(data.compartmentId, "awaiting_drop");
+                  } else if (status === "awaiting_pick") {
+                    showAssignedModal(data.compartmentId, "awaiting_pick");
+                  } else {
+                    showAssignedModal(data.compartmentId);
+                  }
+                }
+              });
+          }
+
+          function onScanSuccess(decodedText) {
+            const accessCode = (decodedText || '').trim();
+            if (!accessCode) {
+              window.restartScanner("Invalid QR format");
+              return;
+            }
+            scanner.clear().catch(() => { }).finally(() => {
+              handleApi(accessCode)
+                .catch(err => {
+                  console.error('API Error:', err);
+                  statusEl.textContent = err.message || "Network error";
+                  statusEl.className = "mt-2 small text-warning";
+                })
+                .finally(() => {
+                  window.restartScanner();
+                  setTimeout(() => window.location.reload(), 5000);
+                });
+            });
+          }
+
+          scanner.render(onScanSuccess);
+          statusEl.textContent = "Scanner ready. Show QR code.";
+          statusEl.className = "mt-2 small text-muted";
+
+        } else {
+          // 🚨 No camera → fallback UI
+          qrReader.innerHTML = `
+          <div class="d-flex flex-column align-items-center justify-content-center p-4">
+            <i class="fa-solid fa-barcode fa-4x mb-3" style="color:#ff6600;"></i>
+            <h5 class="text-warning">Scan your QR code</h5>
+            <p class="small text-muted">Use the USB QR reader to authenticate</p>
+          </div>
+        `;
+          statusEl.textContent = "USB QR Reader Mode";
+          statusEl.className = "mt-2 small text-info";
+        }
+      }).catch(err => {
+        console.error("Camera check failed:", err);
+        qrReader.innerHTML = `
+        <div class="d-flex flex-column align-items-center justify-content-center p-4">
+          <i class="fa-solid fa-barcode fa-4x mb-3" style="color:#ff6600;"></i>
+          <h5 class="text-warning">Scan your QR code</h5>
+          <p class="small text-muted">Use the USB QR reader to authenticate</p>
+        </div>
+      `;
+        statusEl.textContent = "USB QR Reader Mode";
+        statusEl.className = "mt-2 small text-info";
+      });
+    });
+  </script>
+
+
+  <script>
+    // make it global so both camera + USB can use it
+    function showAssignedModal(compartmentId, parcelStatus) {
+      document.getElementById("assignedLockerId").textContent = compartmentId;
+      const actionText = document.getElementById("lockerActionText");
+      const subNote = document.getElementById("lockerSubNote");
+
+      if (parcelStatus === "awaiting_drop") {
+        actionText.textContent = "Please drop your parcel inside the locker";
+        subNote.textContent = "Door will open for dropping";
+      } else if (parcelStatus === "awaiting_pick") {
+        actionText.textContent = "Please pick up your parcel";
+        subNote.textContent = "Door will open for collection";
+      } else {
+        actionText.textContent = "Proceed to your locker";
+        subNote.textContent = "Door will open automatically";
+      }
+
+      const modalEl = document.getElementById('lockerAssignedModal');
+      const locker3D = document.getElementById('locker3D');
+      const modal = new bootstrap.Modal(modalEl);
+      modal.show();
+      setTimeout(() => locker3D.classList.add('open'), 600);
+      setTimeout(() => { modal.hide(); }, 5000);
+
+      modalEl.addEventListener('hidden.bs.modal', () => {
+        locker3D.classList.remove('open');
+      }, { once: true });
+    }
+  </script>
+
+  <!-- ✅ USB QR READER HANDLER (improved & hardened) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('usb-qr-input');
+      const accessOut = document.getElementById('usb-access-code');
+      const lockerId = "<%= lockerId %>";
+      const statusEl = document.getElementById('qr-status');
+
+      // ---- Config ----
+      const EXPECT_LEN = 6;               // set to null if variable length
+      const FALLBACK_DEBOUNCE_MS = 120;   // when no Enter is sent
+      const COOLDOWN_MS = 600;            // ignore keystrokes immediately after a scan
+      const MIN_PROCESS_INTERVAL_MS = 800; // minimum time between processed scans
+      const DUPLICATE_WINDOW_MS = 2500;   // ignore identical codes scanned within this window
+
+      // ---- State ----
+      let scanBufferTimeout = null;
+      let isCooldown = false;
+      let isProcessing = false;
+      let lastProcessedTime = 0;
+      let lastProcessedValue = null;
+      let focusInterval = null;
+
+      // ---- helpers ----
+      function focusHidden() {
+        try {
+          input.focus();
+        } catch (e) { /* ignore */ }
+      }
+
+      // focus periodically so USB keyboards send to hidden input; stop on page hide/unload
+      focusHidden();
+      focusInterval = setInterval(focusHidden, 3000);
+
+      function cleanupOnUnload() {
+        if (focusInterval) {
+          clearInterval(focusInterval);
+          focusInterval = null;
+        }
+        if (scanBufferTimeout) {
+          clearTimeout(scanBufferTimeout);
+          scanBufferTimeout = null;
+        }
+      }
+      window.addEventListener('beforeunload', cleanupOnUnload);
+      window.addEventListener('pagehide', cleanupOnUnload);
+
+      function now() { return Date.now(); }
+
+      // Normalize duplicates like "123456123456" -> "123456"
+      function dedupeIfRepeated(s) {
+        if (!EXPECT_LEN) return s;
+        if (s.length === EXPECT_LEN * 2 && s.slice(0, EXPECT_LEN) === s.slice(EXPECT_LEN)) {
+          return s.slice(0, EXPECT_LEN);
+        }
+        return s;
+      }
+
+      function sanitize(raw) {
+        // remove whitespace/newlines and non-printables
+        return (raw || '').replace(/[\r\n\s]+/g, '').trim();
+      }
+
+      function extractAccessCode(raw) {
+        const first = String(raw || '').split('///')[0];
+        let s = sanitize(first);
+        s = dedupeIfRepeated(s);
+        return s;
+      }
+
+      function setCooldown() {
+        isCooldown = true;
+        setTimeout(() => { isCooldown = false; }, COOLDOWN_MS);
+      }
+
+      // Main scan handler — ensures single processing at a time and duplicates/rate-limit
+      async function handleScan(rawSnapshot) {
+        if (!rawSnapshot) return;
+        const code = extractAccessCode(rawSnapshot);
+        if (!code) return;
+
+        const t = now();
+        // duplicate / rapid protection
+        if (lastProcessedValue === code && (t - lastProcessedTime) < DUPLICATE_WINDOW_MS) {
+          // ignore repeated identical scan
+          console.debug('Ignored duplicate scan', code);
+          return;
+        }
+        if ((t - lastProcessedTime) < MIN_PROCESS_INTERVAL_MS) {
+          // too fast between different scans
+          console.debug('Ignored rapid scan', code);
+          return;
+        }
+
+        if (isCooldown || isProcessing) {
+          console.debug('Busy, skipping scan', { isCooldown, isProcessing, code });
+          return;
+        }
+
+        // update UI immediately
+        accessOut.textContent = code || '—';
+        statusEl.textContent = "Processing QR code…";
+        statusEl.className = "mt-2 small text-primary";
+
+        isProcessing = true;
+        setCooldown();
+
+        try {
+          const res = await fetch('/api/locker/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: `${code}///${lockerId}`
+          });
+
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const msg = (payload && payload.message) ? payload.message : `Request failed (${res.status})`;
+            throw new Error(msg);
+          }
+
+          // success handling
+          if (payload && payload.success && payload.compartmentId) {
+            const status = payload.parcelStatus || "";   // ✅ use parcelStatus
+            if (status === "picked") {
+              new bootstrap.Modal(document.getElementById('parcelModal')).show();
+            } else if (status === "awaiting_drop") {
+              showAssignedModal(payload.compartmentId, "awaiting_drop");
+            } else if (status === "awaiting_pick") {
+              showAssignedModal(payload.compartmentId, "awaiting_pick");
+            } else {
+              showAssignedModal(payload.compartmentId);
+            }
+            setTimeout(() => { window.location.reload(); }, 2000);
+
+
+            // remember this processed scan
+            lastProcessedTime = now();
+            lastProcessedValue = code;
+          } else {
+            throw new Error((payload && payload.message) ? payload.message : "Scan failed");
+          }
+        } catch (err) {
+          console.error('USB API Error:', err);
+          statusEl.textContent = err.message || "Network error";
+          statusEl.className = "mt-2 small text-warning";
+        } finally {
+          isProcessing = false;
+          // restart camera scanner if available
+          if (window.restartScanner) {
+            try { window.restartScanner(); } catch (e) { /* ignore */ }
+          }
+          // double-clear just in case hardware keeps typing
+          input.value = '';
+          focusHidden();
+        }
+      }
+
+      // Handle Enter key (most hardware sends it) — snapshot + immediate process
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (scanBufferTimeout) {
+            clearTimeout(scanBufferTimeout);
+            scanBufferTimeout = null;
+          }
+          const snap = input.value;
+          input.value = '';
+          handleScan(snap);
+        }
+      });
+
+      // Fallback for scanners that don't send Enter — debounce
+      input.addEventListener('input', () => {
+        if (isCooldown || isProcessing) return;
+        if (scanBufferTimeout) {
+          clearTimeout(scanBufferTimeout);
+          scanBufferTimeout = null;
+        }
+
+        const snap = input.value;
+        // If we have EXPECT_LEN and got that many characters — process ASAP
+        const maybe = extractAccessCode(snap);
+        if (EXPECT_LEN && maybe.length >= EXPECT_LEN) {
+          // process immediately (but keep protections inside handleScan)
+          // capture current full buffer (not just maybe) because some scanners send suffixes
+          const capture = snap;
+          input.value = ''; // clear to avoid concat with next scan
+          handleScan(capture);
+          return;
+        }
+
+        // Otherwise debounce a bit to wait for more keystrokes
+        scanBufferTimeout = setTimeout(() => {
+          const finalSnap = input.value;
+          // if nothing meaningful, do nothing
+          const finalMaybe = extractAccessCode(finalSnap);
+          if (!finalMaybe) {
+            input.value = '';
+            return;
+          }
+          input.value = '';
+          handleScan(finalSnap);
+        }, FALLBACK_DEBOUNCE_MS);
+      });
+
+      // Support paste (some scanners / debug flows paste)
+      input.addEventListener('paste', (e) => {
+        const pasted = (e.clipboardData && e.clipboardData.getData) ? e.clipboardData.getData('text') : '';
+        if (pasted) {
+          // process pasted content immediately
+          e.preventDefault();
+          input.value = '';
+          handleScan(pasted);
+        }
+      });
+
+    });
+  </script>
+<script>
+(function(){
+  let timer;
+
+  function resetTimer() {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      window.location.href = '/';
+    }, 20000); // 20 seconds
+  }
+
+  // Reset on any user activity
+  ['mousemove','keydown','click','touchstart'].forEach(evt =>
+    document.addEventListener(evt, resetTimer)
+  );
+
+  // Start immediately
+  resetTimer();
+})();
+</script>
+
+
+
+
+</body>
+
+</html>

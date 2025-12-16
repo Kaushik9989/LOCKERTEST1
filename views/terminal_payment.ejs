@@ -1,0 +1,14 @@
+<%- include('partials/header', { title: 'Payment' }) %>
+<main style="min-height:80vh;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:480px;padding:2rem;background:#fff;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,0.06);">
+    <h3>Payment</h3>
+    <p class="text-muted">Amount: ₹<%= parseFloat(order.totalPrice.toString()) %></p>
+
+    <form method="post" action="/terminal/pay">
+      <input type="hidden" name="orderId" value="<%= order._id %>"/>
+      <!-- integrate real payment here; for now simulate -->
+      <button type="submit" class="btn btn-orange w-100">Pay Now</button>
+    </form>
+  </div>
+</main>
+<%- include('partials/footer') %>

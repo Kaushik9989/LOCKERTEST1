@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Droppoint — Starting</title>
+  <style>
+    :root{ --bg:#0a1220; --accent:#ff7b00; --muted:#9aa7b2; }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071021,#081525);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#fff;display:flex;align-items:center;justify-content:center}
+    .card{width:420px;padding:28px;border-radius:12px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));box-shadow:0 12px 30px rgba(2,6,23,0.6);border:1px solid rgba(255,123,0,0.08)}
+    .logo{height:56px;width:auto;background:#000;padding:6px;border-radius:8px;display:inline-block;margin-bottom:14px}
+    h1{font-size:20px;margin:6px 0;color:var(--accent)}
+    p{color:var(--muted);margin:8px 0 18px}
+    .spinner{width:64px;height:64px;border-radius:50%;border:6px solid rgba(255,255,255,0.06);border-top-color:var(--accent);margin:0 auto 12px;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .progress{height:8px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden}
+    .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#ffb56b);transition:width 330ms linear}
+    .small{font-size:13px;color:#9fb0bd;margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="card" role="status" aria-live="polite">
+    <div class="logo"><img src="images/droppointlogo.png" alt="Droppoint" style="height:44px;"></div>
+    <h1>Droppoint Kiosk</h1>
+    <div class="spinner" aria-hidden="true"></div>
+    <p>Starting local services — getting everything ready.</p>
+    <div class="progress" aria-hidden="true"><div id="bar" class="bar"></div></div>
+    <div class="small" id="statusText">Starting server...</div>
+  </div>
+
+  <script>
+    // little visual progress while server starts
+    let pct = 0;
+    const bar = document.getElementById('bar');
+    const statusText = document.getElementById('statusText');
+    const tick = setInterval(() => {
+      pct = Math.min(85, pct + Math.floor(Math.random()*8)+4);
+      bar.style.width = pct + '%';
+    }, 350);
+    // Listen for a message from Electron (when server ready)
+    window.addEventListener('message', (ev) => {
+      if (ev.data === 'server-ready') {
+        clearInterval(tick);
+        bar.style.width = '100%';
+        statusText.textContent = 'Server ready — opening app';
+        // small delay so user sees 100%
+        setTimeout(() => { document.location = 'main.html' }, 350);
+      } else if (ev.data && ev.data.type === 'status') {
+        statusText.textContent = ev.data.msg || statusText.textContent;
+      }
+    }, false);
+  </script>
+</body>
+</html>

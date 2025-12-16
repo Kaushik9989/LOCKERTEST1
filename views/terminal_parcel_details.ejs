@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Parcel Details</title>
+  <style>
+    :root{
+      --brand: #ff7b00;
+      --brand-600:#e56e00;
+      --brand-700:#c75f00;
+      --ok:#0a7f42;
+      --warn:#d97706;
+      --danger:#c81e1e;
+
+      --bg: #f8fafc;
+      --surface:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e5e7eb;
+      --ring:#fde68a;
+      --radius:16px;
+      --shadow: 0 10px 30px rgba(2,6,23,0.06);
+    }
+    /* FIX: dark-mode palette should be under prefers-color-scheme: dark */
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1220;
+        --surface:#0f172a;
+        --text:#e5e7eb;
+        --muted:#94a3b8;
+        --border:#1f2937;
+        --shadow: 0 10px 30px rgba(0,0,0,0.6);
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      padding:16px;
+    }
+    .wrap{ width:100%; max-width:560px; }
+    .card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .head{ display:flex; align-items:center; gap:12px; padding:20px 20px 8px 20px; }
+    .logo{ width:42px;height:42px;border-radius:12px; background:linear-gradient(135deg,var(--brand),var(--brand-700)); display:grid;place-items:center;color:#fff;font-weight:900; }
+    .title{ margin:0;font-size:1.1rem;font-weight:800; }
+    .sub{ margin:2px 0 0 0;color:var(--muted);font-size:.9rem; }
+    .statusbar{ display:flex;justify-content:space-between;align-items:center; padding:0 20px 14px 20px;gap:8px; }
+    .chip{ display:inline-flex;align-items:center;gap:8px; font-weight:700;font-size:.82rem;line-height:1; padding:10px 12px;border-radius:999px;border:1px solid var(--border); background:transparent; }
+    .chip.ok{ color:var(--ok); border-color: color-mix(in oklab, var(--ok), transparent 65%); }
+    .chip.pending{ color:var(--warn); border-color: color-mix(in oklab, var(--warn), transparent 65%); }
+    .chip.failed{ color:var(--danger); border-color: color-mix(in oklab, var(--danger), transparent 65%); }
+    .chip .dot{width:8px;height:8px;border-radius:999px;background:currentColor;}
+
+    .body{ padding:18px 20px 12px; }
+    .rows{display:grid;gap:10px;margin:8px 0 6px}
+    .row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px dashed var(--border)}
+    .row:last-child{border-bottom:none}
+    .label{color:var(--muted);font-weight:600}
+    .value{font-weight:800}
+    .money{font-size:1.25rem;color:var(--brand);font-weight:900}
+    .hint{margin:8px 0 0 0;color:var(--muted);font-size:.85rem}
+
+    .duebox{ margin:12px 0 0; padding:12px 14px; border:1px dashed var(--border); border-radius:12px; display:flex;justify-content:space-between;align-items:center; }
+    .duebox strong{font-size:1rem}
+
+    .actions{ padding:16px; display:grid; gap:10px; background: color-mix(in oklab, var(--surface), var(--border) 6%); border-top:1px solid var(--border) }
+    .btn{ appearance:none; border:none; cursor:pointer; border-radius:12px; padding:14px 16px; font-weight:800; font-size:1rem; }
+    .btn-primary{ background:var(--brand); color:#fff; box-shadow:0 6px 16px color-mix(in oklab, var(--brand), black 80%); }
+    .btn-primary:hover{ background:var(--brand-600) }
+    .btn-primary:active{ transform:translateY(1px) }
+    .btn[disabled]{ opacity:.6; cursor:not-allowed }
+    .btn-ghost{ background:transparent; color:var(--muted); font-weight:700 }
+
+    .note{ display:flex; align-items:center; gap:8px; justify-content:center; color:var(--muted); font-size:.85rem }
+    .badge{ display:inline-block; padding:6px 10px; border-radius:999px; background: color-mix(in oklab, var(--brand), white 85%); color: var(--brand-700); font-weight:800; font-size:.8rem }
+
+    .code-link{ text-decoration:none; font-weight:800; color:var(--brand) }
+
+    @media (prefers-reduced-motion: reduce){ .btn-primary:active{ transform:none } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <article class="card" role="main" aria-labelledby="title">
+      <header class="head">
+        <div class="logo" aria-hidden="true">D</div>
+        <div>
+          <h1 id="title" class="title">Parcel Details</h1>
+          <p class="sub">ID: <code><%= parcel._id %></code></p>
+        </div>
+      </header>
+
+      <div class="statusbar">
+        <% const paid = parcel.paymentStatus === 'completed'; %>
+        <span class="chip <%= paid ? 'ok' : (parcel.paymentStatus === 'failed' ? 'failed' : 'pending') %>">
+          <span class="dot" aria-hidden="true"></span>
+          <%= paid ? 'Payment received' : (parcel.paymentStatus === 'failed' ? 'Payment failed' : 'Awaiting payment') %>
+        </span>
+        <% if (!paid) { %>
+          <span class="badge">Due now</span>
+        <% } %>
+      </div>
+
+      <section class="body" aria-describedby="summary">
+        <div class="rows" id="summary">
+          <div class="row">
+            <div class="label">Size</div>
+            <div class="value"><%= parcel.size %></div>
+          </div>
+          <div class="row">
+            <div class="label">Hours</div>
+            <div class="value"><%= parcel.hours %></div>
+          </div>
+          <div class="row">
+            <div class="label">Cost</div>
+            <div class="value money">₹<%= cost %></div>
+          </div>
+          <% if (!paid) { %>
+            <div class="duebox" role="status" aria-live="polite">
+              <span class="label">Amount due</span>
+              <strong>₹<%= cost %></strong>
+            </div>
+          <% } %>
+        </div>
+        <% if (paid) { %>
+          <p class="hint">You're all set. Use your access code to open the locker.</p>
+          <p class="hint"><a class="code-link" href="/terminal/parcel/<%= parcel._id %>/access">Show access code →</a></p>
+        <% } else { %>
+          <p class="hint">Secure checkout with Razorpay. You’ll be redirected back here once complete.</p>
+        <% } %>
+      </section>
+
+      <footer class="actions">
+        <% if (!paid) { %>
+          <button id="payBtn" class="btn btn-primary" aria-label="Pay securely with Razorpay">Pay ₹<%= cost %> now</button>
+          <button class="btn btn-ghost" onclick="history.back()" aria-label="Go back">Go back</button>
+        <% } else { %>
+          <a class="btn btn-primary" href="/terminal/parcel/<%= parcel._id %>/access">Show access code</a>
+         <button class="btn btn-ghost" onclick="confirmBack()">
+  Back
+</button>
+        <% } %>
+        <div class="note" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm-3 7V6a3 3 0 1 1 6 0v2H9Z"/></svg>
+          Payments secured by Razorpay
+        </div>
+      </footer>
+    </article>
+    <noscript><p style="margin-top:12px;color:#a00">JavaScript is required to complete payment.</p></noscript>
+  </div>
+
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+  (function(){
+    const payBtn = document.getElementById('payBtn');
+    if (!payBtn) return;
+
+    let isProcessing = false;
+
+    function setBusy(state){
+      isProcessing = !!state;
+      payBtn.disabled = !!state;
+      payBtn.style.pointerEvents = state ? 'none' : '';
+      payBtn.textContent = state ? 'Processing…' : 'Pay ₹<%= cost %> now';
+    }
+
+    payBtn.addEventListener('click', async () => {
+      // 🚫 Ignore double-clicks / spam
+      if (isProcessing) return;
+
+      try {
+        setBusy(true);
+
+        const resp = await fetch('/terminal/razorpay/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parcelId: '<%= parcel._id %>' })
+        });
+
+        if (!resp.ok) throw new Error('Create order failed');
+        const order = await resp.json();
+        if (order.error) throw new Error(order.error);
+
+        const options = {
+          key: '<%= razorpayKeyId %>',
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Droppoint',
+          description: 'Parcel payment',
+          order_id: order.id,
+          prefill: { contact: order.contact || '' },
+          method: 'upi',
+          upi: { flow: 'intent' },
+          config: {
+            display: {
+              hide: ['card','netbanking','wallet','emi','paylater','qr']
+            }
+          },
+          theme: { color: '#ff7b00' },
+          handler: async function (response) {
+            try{
+              const verifyResp = await fetch('/terminal/razorpay/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  parcelId: '<%= parcel._id %>'
+                })
+              });
+              const verifyJson = await verifyResp.json();
+              if (verifyJson && verifyJson.success) {
+                // ✅ success — no need to re-enable, user is leaving page
+                window.location.href = `/terminal/parcel/<%= parcel._id %>/access`;
+              } else {
+                alert('Payment verification failed: ' + (verifyJson.error || 'Unknown'));
+                setBusy(false);
+              }
+            }catch(e){
+              console.error(e);
+              alert('Could not verify payment.');
+              setBusy(false);
+            }
+          },
+          retry: { enabled: false }
+        };
+
+        const rzp = new Razorpay(options);
+
+        rzp.on('payment.failed', function (res) {
+          alert(res.error && res.error.description ? res.error.description : 'Payment failed.');
+          setBusy(false); // allow retry
+        });
+
+        rzp.on('modal.closed', function(){
+          // User closed Razorpay without paying
+          setBusy(false);
+        });
+
+        rzp.open();
+      } catch (err) {
+        console.error(err);
+        alert('Payment error. Please try again.');
+        setBusy(false);
+      }
+    });
+  })();
+</script>
+<script>
+  function confirmBack() {
+    const ok = confirm("Are you sure you want to go back?");
+    if (ok) {
+      window.location.href = "/";
+    }
+  }
+</script>
+</body>
+</html>

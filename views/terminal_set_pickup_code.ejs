@@ -1,0 +1,17 @@
+<%- include('partials/header', { title: 'Set Pickup Code' }) %>
+<main style="min-height:80vh;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:480px;padding:2rem;background:#fff;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,0.06);">
+    <h3>Create a pickup code</h3>
+    <p class="text-muted">Enter a 4–8 character code you’ll use to pickup your parcel</p>
+
+    <form method="post" action="/terminal/set-pickup-code">
+      <input type="hidden" name="orderId" value="<%= orderId %>"/>
+      <div class="mb-3">
+        <label class="form-label">Pickup code</label>
+        <input name="code" class="form-control" placeholder="e.g. 1234 or AB12" pattern="[A-Za-z0-9]{4,8}" required/>
+      </div>
+      <button type="submit" class="btn btn-orange w-100">Set Code</button>
+    </form>
+  </div>
+</main>
+<%- include('partials/footer') %>

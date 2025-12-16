@@ -1,0 +1,11 @@
+<%- include('partials/header', { title: 'Done' }) %>
+<main style="min-height:80vh;display:flex;align-items:center;justify-content:center;">
+  <div style="max-width:540px;padding:2rem;background:#fff;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,0.06);text-align:center">
+    <h3>All set — Drop-off complete</h3>
+    <p class="text-muted">Order ID: <%= order._id %></p>
+    <p><strong>Pickup code:</strong> <%= order.pickupCode %></p>
+    <p><strong>Locker:</strong> <%= order.assignedLocker || 'Assigned at drop-off' %></p>
+    <p class="text-muted">Keep this code safe — you'll need it at pickup.</p>
+  </div>
+</main>
+<%- include('partials/footer') %>
