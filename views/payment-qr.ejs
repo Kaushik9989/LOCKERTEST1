@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scan & Pay</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: system-ui;
+      background: #fff7ed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      text-align: center;
+      width: 320px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.1);
+    }
+    h2 { margin-bottom: 8px; }
+    .amount { font-size: 20px; font-weight: 700; color:#ff7b00; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>Scan & Pay</h2>
+    <div class="amount">₹<%= parcel.cost %></div>
+    <p>Parcel ID: <b><%= parcel.customId %></b></p>
+
+  <img src="<%= qr.image_url %>" width="220" />
+<p>Scan with any UPI app</p>
+
+
+    <p>Waiting for payment…</p>
+  </div>
+
+  <script>
+
+
+    // 🔁 Poll payment status
+    setInterval(async () => {
+      const res = await fetch("/terminal/payment/status/<%= parcel._id %>");
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = "/terminal/parcel/<%= parcel._id %>/access";
+      }
+    }, 3000);
+  </script>
+</body>
+</html>

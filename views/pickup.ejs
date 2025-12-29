@@ -50,8 +50,20 @@
     .logo { width: 140px; height: 56px; object-fit: contain; background-color: var(--black); border-radius: 8px; }
 
     /* Fullscreen split */
-    .screen { min-height: 100svh; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; }
-    @media (max-width: 900px) { .screen { grid-template-columns: 1fr; } }
+.screen { 
+  min-height: 100svh; 
+  display: grid; 
+  grid-template-columns: repeat(2, 1fr); 
+  grid-auto-rows: 1fr; 
+}
+
+@media (max-width: 900px) { 
+  .screen { grid-template-columns: 1fr; } 
+}
+.panel--pickup {
+  background: linear-gradient(135deg, rgba(0,120,255,0.08), rgba(0,120,255,0.02));
+}
+
 
     .panel { position: relative; display: flex; align-items: center; justify-content: center; padding: clamp(16px, 3vw, 28px); isolation: isolate; overflow: hidden; }
     .panel--code { background: linear-gradient(135deg, rgba(255,123,0,0.08), rgba(255,123,0,0.02)); }
@@ -83,7 +95,8 @@
 
   <main class="screen" role="main">
     <section class="panel panel--code">
-      <button id="access" class="terminal-btn btn-orange" aria-label="Enter access code">ENTER ACCESS CODE</button>
+      <button id="access" class="terminal-btn btn-orange" aria-label="Enter access code">ENTER DROP CODE</button>
+      
       <a href="/pickup-code" aria-hidden="true"></a>
     </section>
 
@@ -105,6 +118,32 @@
       });
     })();
   </script>
+  <script>
+  document.getElementById('access').addEventListener('click', function(){
+    window.location.href = '/pickup-code';
+  });
+
+  document.getElementById('customerPickup').addEventListener('click', function(){
+    window.location.href = '/customer/pickup';
+  });
+
+  document.getElementById('showqr').addEventListener('click', function(){
+    window.location.href = '/qr/pickup';
+  });
+
+  (function(){
+    var buttons = document.querySelectorAll('.terminal-btn');
+    buttons.forEach(function(b){
+      b.addEventListener('keydown', function(e){
+        if(e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          b.click();
+        }
+      });
+    });
+  })();
+</script>
+
   <script>
 (function(){
   let timer;

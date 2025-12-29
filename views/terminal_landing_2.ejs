@@ -1,100 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Locker Emulator</title>
-
-  <!-- Icons & CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
-
-  <!-- HTML5 QR Code library -->
+<meta charset="UTF-8">
+<title>Access Terminal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/html5-qrcode"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <style>
-    /* Page Theme */
-    body {
-      background: radial-gradient(circle at 15% 20%, rgba(0, 119, 255, 0.35), transparent 50%),
-        radial-gradient(circle at 85% 25%, rgba(255, 0, 128, 0.3), transparent 50%),
-        radial-gradient(circle at 50% 80%, rgba(255, 230, 0, 0.25), transparent 55%),
-        radial-gradient(circle at center, rgba(0, 255, 157, 0.2), transparent 60%),
-        #00040d;
-      background-size: 400% 400%;
-      animation: gradientFlow 12s ease infinite;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
-    }
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #ffffff;
+  --accent: #f97316;
+  --dark: #111827;
+  --radius: 18px;
+}
 
-    h3,
-    .card-header {
-      color: #ffae42;
-    }
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto;
+}
 
-    small,
-    .text-muted {
-      color: #bbb !important;
-    }
+body {
+  margin: 0;
+  height: 100vh;
+  background: var(--bg);
+  display: flex;
+}
 
-    /* QR container */
-    #qr-reader {
-      border-radius: .75rem;
-      overflow: hidden;
-      background-color: #111 !important;
-      border: 2px solid #ff6600;
-      box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
-    }
+/* MAIN GRID */
+.wrapper {
+  display: grid;
+  grid-template-columns: 1.5fr 2.5fr 1.25fr;
+  width: 100%;
+  height: 100%;
+}
 
-    /* Force QR scanner dark */
-    #qr-reader__scan_region,
-    #qr-reader__dashboard_section,
-    .html5-qrcode,
-    .html5-qrcode-element {
-      background: #111 !important;
-      color: #ffae42 !important;
-    }
+/* LEFT PANEL */
+.left-panel {
+  background: #020617;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 30px;
+  padding: 40px;
+}
 
-    #qr-reader video {
-      width: 100% !important;
-      height: auto !important;
-      object-fit: cover;
-    }
 
-    .html5-qrcode-element button {
-      background: #222 !important;
-      color: #ffae42 !important;
-      border: 1px solid #ff6600 !important;
-      border-radius: .5rem !important;
-      padding: .4rem .8rem;
-      transition: all 0.2s ease;
-    }
+.action-btn {
+ 
+  height: 120px;        /* fixed, clean height */
+  max-width: 100%;
 
-    .html5-qrcode-element button:hover {
-      background: #ff6600 !important;
-      color: #111 !important;
-      box-shadow: 0 0 12px #ff6600;
-    }
+  border-radius: 20px;
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
 
-    .html5-qrcode-close-button {
-      display: none !important;
-    }
+.store {
+  background: var(--accent);
+}
 
-    /* Card style */
-    .card {
-      background: #1a1a1a;
-      border: 1px solid #ff6600;
-      box-shadow: 0 0 15px rgba(255, 102, 0, 0.3);
-      color: #eee;
-    }
+.send {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
 
-    .card-header {
+.action-btn:hover {
+  transform: scale(1.02);
+}
+
+/* CENTER PANEL */
+.center-panel {
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.display {
+  width: 80%;
+  height: 60px;
+  background: #111827;
+  color: white;
+  border-radius: 12px;
+
+  margin-bottom: 28px;
+  padding: 0 10px;
+
+  font-size: 1.6rem;
+  text-align: center;
+  line-height: 60px;
+  letter-spacing: 4px;
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  width: 80%;
+  max-width: 360px;
+}
+
+.key {
+  
+  height: 64px;
+  border-radius: 16px;
+  background: var(--accent);
+  font-size: 2rem;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(0,0,0,.12);
+}
+
+.key:active {
+  transform: scale(0.95);
+}
+
+.enter {
+  grid-column: span 3;
+  background: rgb(189, 61, 2);
+  color: white;
+}
+
+/* RIGHT PANEL */
+.right-panel {
+  background: linear-gradient(180deg, #111827, #020617);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+ 
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+
+
+
+.arrow-box {
+  transform: rotate(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+}
+
+.arrow {
+  font-size: 5rem;
+  color: #facc15;
+  animation: slide 1.2s infinite ease-in-out;
+}
+
+.arrow-box span {
+  color: #facc15;
+  font-weight: 600;
+  letter-spacing: 2px;
+  font-size: 1rem;
+}
+
+/* Arrow movement */
+@keyframes slide {
+  0%   { transform: translateX(0); opacity: 0.4; }
+  50%  { transform: translateX(-15px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 0.4; }
+}
+
+/* Soft pulse */
+@keyframes pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+.center-panel {
+  background: #020617;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 20px;
+  height: 100%;
+}
+
+.center-panel img {
+  margin-bottom: 10px;
+}
+.center-panel h1 {
+  margin: 0 0 18px;
+  font-size: 1.6rem;
+  letter-spacing: 1px;
+}
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Main wrapper fix */
+.wrapper {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Auto scale everything */
+@media (max-height: 800px) {
+  .wrapper {
+    transform: scale(0.9);
+    transform-origin: center;
+  }
+}
+
+@media (max-height: 700px) {
+  .wrapper {
+    transform: scale(0.85);
+  }
+}
+
+@media (max-height: 600px) {
+  .wrapper {
+    transform: scale(0.78);
+  }
+}
+
+</style>
+<style>
+      .modal-content {
       background: #111;
-      border-bottom: 1px solid #ff6600;
+      color: #ffae42;
+      border: 2px solid #ff6600;
+      box-shadow: 0 0 25px rgba(255, 102, 0, 0.8);
     }
-
-    /* Alert style */
-    .alert {
+.alert {
       background: #111;
       border: 1px solid #ff6600;
       color: #ffae42;
@@ -229,449 +371,308 @@
         transform: translateY(-6px);
       }
     }
+    /* RIGHT PANEL QR */
+.right-panel {
+  background: linear-gradient(180deg, #111827, #020617);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
 
-    /* Modal */
-    .modal-content {
-      background: #111;
-      color: #ffae42;
-      border: 2px solid #ff6600;
-      box-shadow: 0 0 25px rgba(255, 102, 0, 0.8);
+.qr-wrapper {
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+}
+
+.qr-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  color: #facc15;
+}
+
+.qr-box {
+  width: 100%;
+  height: 280px;
+  border-radius: 16px;
+  background: #000;
+  border: 2px dashed #f97316;
+  
+}
+/* Hide html5-qrcode default controls */
+#qr-reader__dashboard {
+  display: none !important;
+}
+#qr-reader video {
+  border-radius: 14px;
+  object-fit: cover;
+  height: 280px;
+}
+
+.qr-status {
+  font-size: 0.9rem;
+  color: #cbd5f5;
+  margin-top: 6px;
+}
+
+.qr-hint {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #facc15;
+  opacity: 0.9;
+}
+
+</style>
+
+    <style>
+    :root {
+      --accent: #ff7b00;
+      --dark: #0f172a;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --radius: 18px;
     }
 
-    .go-back-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #ff6600, #ffae42);
-      color: #111;
-      font-weight: bold;
-      border: none;
-      border-radius: 12px;
-      padding: 0.6rem 1.2rem;
-      font-size: 1.1rem;
-      box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
-      transition: all 0.25s ease-in-out;
-      cursor: pointer;
-    }
+   
+   
 
-    .go-back-btn:hover {
-      background: linear-gradient(135deg, #ffae42, #ff6600);
-      color: #111;
-      transform: scale(1.05);
-      box-shadow: 0 0 25px rgba(255, 174, 66, 0.9);
-    }
-
-    .go-back-btn i {
-      font-size: 1.2rem;
-    }
-  </style>
-
-  <style>
-    /* body {
-      background: radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.992), transparent 50%),
-        radial-gradient(circle at 85% 25%, rgba(255, 255, 255, 0.3), transparent 50%),
-        radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.25), transparent 55%),
-        radial-gradient(circle at center, rgba(0, 255, 157, 0.2), transparent 60%),
-        #00040d;
-      background-size: 400% 400%;
-      animation: gradientFlow 12s ease infinite;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
-      color: #e0e0e0;
-      min-height: 100vh;
+    /* HEADER */
+    .header {
+      height: 80px;
+      padding: 0 20px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .back-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    /* MAIN */
+    .screen {
+      flex: 1;
+      display: flex;
       justify-content: center;
+      align-items: center;
       padding: 20px;
-    } */
-
-    .cta-card {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 1.5rem;
-      padding: 2rem;
-      box-shadow: 0 0 35px rgba(0, 255, 255, 0.6);
-      backdrop-filter: blur(15px);
     }
 
-    .option-card {
-      background: rgba(0, 0, 0, 0.4);
-      border-radius: 1rem;
-      padding: 2rem 1.5rem;
-      text-align: center;
-      transition: transform 0.35s ease, box-shadow 0.35s ease;
-      backdrop-filter: blur(8px);
-    }
-
-    .option-card:hover {
-      transform: translateY(-8px) scale(1.03);
-      box-shadow: 0 0 35px rgba(0, 255, 255, 0.9);
-    }
-
-    .option-card i {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      color: cyan;
-    }
-
-    .cta-button {
-      background: linear-gradient(135deg, #00ffff, #0077ff);
-      color: #fff;
-      border: none;
-      padding: 0.8rem;
-      border-radius: 0.75rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
+    .panel {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.1);
+      padding: 30px;
       width: 100%;
-    }
-
-    .cta-button:hover {
-      transform: scale(1.05);
-      background: linear-gradient(135deg, #0077ff, #00ffff);
-    }
-
-    .compartment-card {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 0.75rem;
-      padding: 1rem;
+      max-width: 520px;
       text-align: center;
-      font-size: 0.9rem;
-      color: #fff;
-      height: 140px;
-      box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
     }
 
-    .badge-available {
-      background: rgba(0, 200, 0, 0.8);
-    }
-
-    .badge-booked {
-      background: rgba(255, 165, 0, 0.9);
-    }
-
-    .badge-locked {
-      background: rgba(255, 0, 0, 0.8);
-    }
-
-    .status-tag-wrapper {
-      margin-top: 0.8rem;
-      display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .status-tag {
-      font-weight: bold;
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.5px;
-      border-radius: 0.5rem;
-      padding: 0.25rem 0.6rem;
-      display: inline-block;
-    }
-
-    .status-tag.available {
-      background: rgba(0, 255, 128, 0.15);
-      color: #00ff99;
-      border: 1px solid #00ff99;
-    }
-
-    .status-tag.locked {
-      background: rgba(255, 0, 0, 0.15);
-      color: #ff4d4d;
-      border: 1px solid #ff4d4d;
-    }
-
-    .status-tag.booked {
-      background: rgba(255, 165, 0, 0.15);
-      color: #ffae42;
-      border: 1px solid #ffae42;
-    }
-
-    .access-fab {
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      border: none;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, #00ffff, #0077ff);
-      color: #fff;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-      cursor: pointer;
-      z-index: 1050;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-    }
-
-    .access-fab:hover {
-      transform: translateY(-2px) scale(1.03);
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
-    }
-
-    .access-fab i {
-      font-size: 1.1rem;
-    }
-
-    @media (max-width: 575px) {
-      .access-fab {
-        right: 14px;
-        bottom: 14px;
-        width: 42px;
-        height: 42px;
-      }
-    }
-
-
-    /* Compartment card states */
-    .compartment-card.available {
-      background: rgba(0, 255, 128, 0.08);
-      border: 1px solid #00ff99;
-      box-shadow: 0 0 15px rgba(0, 255, 128, 0.6);
-    }
-
-    .compartment-card.booked {
-      background: rgba(255, 0, 0, 0.08);
-      border: 1px solid #ff4d4d;
-      box-shadow: 0 0 15px rgba(255, 77, 77, 0.6);
-    }
-
-    /* Counter badges */
-    /* Compartment summary counter */
-    #compartment-counter {
-      background: rgba(255, 255, 255, 0.05);
-      padding: 0.4rem 0.8rem;
-      border-radius: 0.6rem;
-      box-shadow: 0 0 12px rgba(0, 255, 255, 0.25);
-      font-size: 0.95rem;
-      font-weight: 600;
+    .panel img {
+      height: 70px;
       margin-bottom: 10px;
     }
 
-    #compartment-counter span {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
+    .panel h3 {
+      font-weight: 800;
+      margin-bottom: 14px;
     }
 
-    #compartment-counter .text-danger {
-      color: #ff4d4d !important;
-    }
-
-    #compartment-counter .text-success {
-      color: #00ff99 !important;
-    }
-
-    #compartment-counter .mx-1 {
-      color: #888;
-      font-weight: 400;
-    }
-
-    /* Compartment Card Redesign */
-    .compartment-card {
-      position: relative;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 1rem;
-      padding: 1.2rem;
+    .code-input {
+      width: 50%;
+      font-size: 34px;
+      letter-spacing: 10px;
       text-align: center;
-      font-size: 0.95rem;
-      color: #fff;
-      height: 160px;
-      box-shadow: 0 0 18px rgba(0, 255, 255, 0.2);
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    /* Hover effect */
-    .compartment-card:hover {
-      transform: translateY(-6px) scale(1.03);
-      box-shadow: 0 0 25px rgba(0, 255, 255, 0.45);
-    }
-
-    /* Status-based backgrounds */
-    .compartment-card.available {
-      background: rgba(0, 255, 128, 0.08);
-      border: 1px solid #00ff99;
-      box-shadow: 0 0 18px rgba(0, 255, 128, 0.35);
-    }
-
-    .compartment-card.booked {
-      background: rgba(255, 77, 77, 0.08);
-      border: 1px solid #ff4d4d;
-      box-shadow: 0 0 18px rgba(255, 77, 77, 0.35);
-    }
-
-    /* Compartment title */
-    .compartment-card h6 {
-      margin-bottom: 0.4rem;
+      border: none;
+      background-color: linear-gradient(180deg, #111827, #020617);
+      margin-bottom: 20px;
+      color: white;
+      padding: 8px 0;
+      outline: none;
       font-weight: 700;
-      font-size: 1.1rem;
-      color: #00eaff;
     }
 
-    /* Size text */
-    .compartment-card p {
-      margin: 0.3rem 0;
-      font-size: 0.85rem;
-      color: #bbb;
+    /* KEYPAD */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
     }
 
-    /* Status tag */
-    .compartment-card .status-tag-wrapper {
-      margin-top: 0.6rem;
+    .key {
+      height: 70px;
+      border-radius: 14px;
+      background: var(--accent);
+      border: none;
+      font-size: 24px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 6px 16px rgba(0,0,0,.2);
     }
 
-    .compartment-card .status-tag {
-      font-weight: bold;
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.5px;
-      border-radius: 0.5rem;
-      padding: 0.3rem 0.7rem;
-      display: inline-block;
+    .key:active {
+      transform: scale(.96);
     }
 
-    .compartment-card .status-tag.available {
-      background: rgba(0, 255, 128, 0.12);
-      color: #00ff99;
-      border: 1px solid #00ff99;
+    .submit-btn {
+      width: 50%;
+      padding: 14px;
+      font-size: 18px;
+      font-weight: 800;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      margin-top: 10px;
     }
 
-    .compartment-card .status-tag.booked {
-      background: rgba(255, 77, 77, 0.12);
-      color: #ff4d4d;
-      border: 1px solid #ff4d4d;
+    .secondary-btn {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 12px;
+      background: #f3f4f6;
+      border: none;
+      font-weight: 600;
     }
 
-    /* Lock icon on top */
-    .status-emoji {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      font-size: 1.1rem;
+    /* MODAL */
+    .modal-content {
+      border-radius: 20px;
+      text-align: center;
+      padding: 20px;
     }
-  </style>
+
+    .payment-icon {
+      width: 80px;
+      height: 80px;
+      margin: auto;
+      border-radius: 50%;
+      background: linear-gradient(135deg,#ff7b00,#ff9f43);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 36px;
+      margin-bottom: 15px;
+    }
+</style>
 </head>
 
 <body>
 
-  <div class="container py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="d-flex align-items-center gap-3">
-        <img src="/images/droppointlogo.png" style="height: 70px; width: 180px;">
-        <small class="text-muted">Locker ID: <%= lockerId %></small>
-      </div>
+<div class="wrapper">
 
-      <!-- Go Back button -->
-      <button onclick="window.location.href='/'" class="btn btn-sm go-back-btn d-flex align-items-center gap-1">
-        <i class="bi bi-arrow-left-circle"></i> Go Back
-      </button>
+  <!-- LEFT -->
+  <div class="left-panel">
+    <button class="action-btn store" onclick="window.location.href='/terminal/phone'">STORE</button>
+    <button class="action-btn send">SEND</button>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-panel" style="background-color: #020617;">
+  <img src="images/droppointlogo.png" style="height:120px; max-width:100%;" />
+
+    <h1 style="color: white; ">ENTER DROP / PICKUP CODE</h1>
+    <input id="accessCode" class="code-input" maxlength="6" readonly style="background-color: rgb(0, 0, 0);"/>
+
+    <div class="keypad">
+      <button class="key" onclick="pressKey(1)">1</button>
+      <button class="key" onclick="pressKey(2)">2</button>
+      <button class="key" onclick="pressKey(3)">3</button>
+      <button class="key" onclick="pressKey(4)">4</button>
+      <button class="key" onclick="pressKey(5)">5</button>
+      <button class="key" onclick="pressKey(6)">6</button>
+      <button class="key" onclick="pressKey(7)">7</button>
+      <button class="key" onclick="pressKey(8)">8</button>
+      <button class="key" onclick="pressKey(9)">9</button>
+      <button class="key" onclick="clearCode()">C</button>
+      <button class="key" onclick="pressKey(0)">0</button>
+      <button class="key" onclick="deleteKey()">⌫</button>
     </div>
 
-    <!-- Scanner Row (centered) -->
-    <div class="row g-3 justify-content-center">
-      <div class="col-lg-9">
-        <div class="card mb-3 shadow-sm mt-1">
+    <button class="submit-btn" onclick="submitCode()">Unlock</button>
+    
+   
+  </div>
 
-          <div class="card-header d-flex align-items-center">
-            <i class="bi bi-qr-code-scan me-2"></i> QR Scanner
-          </div>
-          <div class="card-body d-flex flex-column align-items-center justify-content-center">
-            <!-- ✅ USB QR reader hidden input (keeps focus) -->
-            <input id="usb-qr-input" type="text" autocomplete="off" inputmode="none"
+  <!-- RIGHT -->
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+  <div class="qr-wrapper">
+    <div class="qr-title">SCAN QR CODE</div>
+
+    <!-- Camera / USB QR -->
+    <div id="qr-reader" class="qr-box"></div>
+  <input id="usb-qr-input" type="text" autocomplete="off" inputmode="none"
               style="opacity:0; position:absolute; left:-9999px; width:0; height:0;" />
-            <!-- (optional) show the last captured access code -->
-            <div class="small text-muted mb-2">Access Code: <span id="usb-access-code">—</span></div>
-            <!-- Camera scanner container -->
-            <div id="qr-reader" class="border border-secondary rounded" style="height: 450px;"></div>
-            <div id="qr-status" class="mt-2 text-muted small">Initializing scanner…</div>
-            <div class="mt-3 alert alert-warning py-2 mb-0 d-flex align-items-center justify-content-center">
-              <i class="bi bi-shield-lock-fill me-2"></i>
-              <small class="mb-0">Secure Mode: QR Authentication Required</small>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div id="qr-status" class="qr-status">
+      Initializing scanner…
     </div>
+
+    
   </div>
+</div>
+
+
+</div>
 
 
 
 
 
-  <!-- Parcel Already Picked Modal -->
-  <div class="modal fade" id="parcelModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content"
-        style="background:#1a1a1a; color:white; border-radius:12px; text-align:center; box-shadow:0 0 25px rgba(255,140,0,0.8);">
-        <div class="modal-body p-4">
-          <i class="fa-solid fa-box-open fa-3x mb-3" style="color:#ff6600;"></i>
-          <h4>Parcel Already Picked</h4>
-          <p class="mt-2">This parcel has already been collected earlier.</p>
-          <button class="btn btn-warning mt-3" data-bs-dismiss="modal">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Locker Assigned Modal -->
-  <div class="modal fade" id="lockerAssignedModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content text-center">
-        <div class="modal-header border-0">
-          <h5 class="modal-title w-100"><i class="bi bi-box-seam-fill text-success me-2"></i> Locker Assigned</h5>
-        </div>
-        <div class="modal-body">
-          <div class="floaty">
-            <h1 id="assignedLockerId" class="display-3 fw-bold text-warning">--</h1>
-            <p id="lockerActionText" class="text-muted mb-3">Proceed to your locker</p>
-            <div class="locker-scene mt-2">
-              <div id="locker3D" class="locker">
-                <div class="box">
-                  <div class="panel back"></div>
-                  <div class="panel bottom"></div>
-                  <div class="panel top"></div>
-                  <div class="panel left"></div>
-                  <div class="panel right"></div>
-                  <div class="door">
-                    <div class="mesh-window"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div id="lockerSubNote" class="mt-3 small text-muted">Door will open automatically</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- No Compartment Available Modal -->
-  <div class="modal fade" id="noCompartmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content text-center p-4"
-        style="background:#1a1a1a; color:white; border-radius:12px; box-shadow:0 0 25px rgba(255,0,0,0.8);">
-        <div class="modal-body">
-          <i class="fa-solid fa-triangle-exclamation fa-3x mb-3" style="color:#ff3333;"></i>
-          <h4>No Compartment Available</h4>
-          <p class="mt-2">No locker is available for this parcel size.</p>
-          <button class="btn btn-danger mt-3" data-bs-dismiss="modal">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <a href="/accessCode" style="text-decoration: none;"><button id="access-fab" class="access-fab"
-      aria-label="Enter Access Code" title="Enter Access Code">
-      <i class="bi bi-key"></i>
-    </button></a>
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+ <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 
+<script>
+  function pressKey(num) {
+    const input = document.getElementById("accessCode");
+    if (input.value.length < 6) {
+      input.value += num;
+    }
+  }
+
+  function deleteKey() {
+    const input = document.getElementById("accessCode");
+    input.value = input.value.slice(0, -1);
+  }
+
+  function clearCode() {
+    document.getElementById("accessCode").value = "";
+  }
+
+  function submitCode() {
+    const code = document.getElementById("accessCode").value.trim();
+
+    if (code.length !== 6) {
+      alert("Please enter 6 digit code");
+      return;
+    }
+
+    console.log("Entered code:", code);
+    // Your API call here
+  }
+</script>
 
 
   <script>
@@ -1071,10 +1072,203 @@
       resetTimer();
     })();
   </script>
+  <script>
+function pressKey(n){
+  const i = document.getElementById("accessCode");
+  if(i.value.length < 6) i.value += n;
+}
+function deleteKey(){
+  const i = document.getElementById("accessCode");
+  i.value = i.value.slice(0,-1);
+}
+function clearCode(){
+  document.getElementById("accessCode").value = "";
+}
+function goBack(){
+  window.location.href = "/";
+}
+function submitCode(){
+  alert("Connect your API here");
+}
 
 
 
 
+
+function showPaymentRequiredModal(message, paymentPage) {
+  document.getElementById('paymentMessage').textContent =
+    "Please pay the due to unlock your locker"
+
+  const payBtn = document.getElementById('payNowBtn');
+  payBtn.onclick = () => window.location.href = paymentPage;
+
+  bootstrap.Modal.getOrCreateInstance(
+    document.getElementById('paymentRequiredModal')
+  ).show();
+}
+
+
+    function goBack() { window.location.href = '/'; }
+
+
+  function showAssignedModal(compartmentId, parcelStatus){
+    const modalEl = document.getElementById('lockerAssignedModal');
+    if(modalEl.parentElement !== document.body){ document.body.appendChild(modalEl); }
+
+    document.getElementById('assignedLockerId').textContent = 'C' + compartmentId;
+    const actionText = document.getElementById('lockerActionText');
+    const subNote = document.getElementById('lockerSubNote');
+    const closeWarn = document.getElementById('closeWarning');
+
+    if(parcelStatus === 'awaiting_drop'){
+      actionText.textContent = 'Please drop your parcel inside the locker';
+      subNote.textContent = 'Door will open for dropping';
+      if(closeWarn) closeWarn.textContent = 'AFTER DROPPING, CLOSE THE LOCKER FIRMLY';
+    } else if(parcelStatus === 'awaiting_pick'){
+      actionText.textContent = 'Please pick up your parcel';
+      subNote.textContent = 'Door will open for collection';
+      if(closeWarn) closeWarn.textContent = 'AFTER PICKUP, CLOSE THE LOCKER FIRMLY';
+    } else {
+      actionText.textContent = 'Proceed to your locker';
+      subNote.textContent = 'Door will open automatically';
+      if(closeWarn) closeWarn.textContent = 'CLOSE THE LOCKER FIRMLY AFTER YOU’RE DONE';
+    }
+
+    // Reset listeners and show
+    modalEl.replaceWith(modalEl.cloneNode(true));
+    const freshModalEl = document.getElementById('lockerAssignedModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(freshModalEl);
+    modal.show();
+
+    // Auto close after 5s
+    setTimeout(() => modal.hide(), 5000);
+  }
+
+
+
+    function pressKey(num) {
+      const input = document.getElementById('accessCode');
+      if (input.value.length >= 6) return;
+      input.value = (input.value + String(num)).slice(0, 6);
+    }
+    function deleteKey() { const i = document.getElementById('accessCode'); i.value = i.value.slice(0, -1); }
+    function clearCode() { document.getElementById('accessCode').value = ''; }
+
+
+function submitCode() {
+  const code = document.getElementById('accessCode').value.trim();
+  if (code.length !== 6) {
+    alert('Please enter your 6-digit code');
+    return;
+  }
+
+  fetch('/api/locker/unlock-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessCode: code, lockerId: 'L00002' })
+  })
+  .then(async res => {
+    const data = await res.json().catch(() => ({}));
+
+    // 🔴 PAYMENT REQUIRED → ALWAYS REDIRECT
+    if (data && data.paymentRequired && data.paymentPage) {
+      // Optional small delay so alert is visible on kiosk
+if (data && data.paymentRequired && data.paymentPage) {
+  showPaymentRequiredModal(data.message, data.paymentPage);
+  return null;
+}
+
+
+      window.location.href = data.paymentPage;
+      return null; // stop further handling
+    }
+
+    // ❌ Other non-success cases
+    if (!res.ok) {
+      throw new Error(data.message || `Request failed (${res.status})`);
+    }
+
+    return data;
+  })
+  .then(data => {
+    if (!data) return;
+
+    // ✅ SUCCESS → UNLOCKED
+    if (data.success && data.compartmentId) {
+      showAssignedModal(data.compartmentId, data.parcelStatus);
+      clearCode();
+    } else {
+      alert(data.message || 'Something went wrong');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert(err.message || 'Error verifying code');
+  });
+}
+
+
+
+  </script>
+  <!-- Parcel Already Picked Modal -->
+  <div class="modal fade" id="parcelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content"
+        style="background:#1a1a1a; color:white; border-radius:12px; text-align:center; box-shadow:0 0 25px rgba(255,140,0,0.8);">
+        <div class="modal-body p-4">
+          <i class="fa-solid fa-box-open fa-3x mb-3" style="color:#ff6600;"></i>
+          <h4>Parcel Already Picked</h4>
+          <p class="mt-2">This parcel has already been collected earlier.</p>
+          <button class="btn btn-warning mt-3" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Locker Assigned Modal -->
+  <div class="modal fade" id="lockerAssignedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-center">
+        <div class="modal-header border-0">
+          <h5 class="modal-title w-100"><i class="bi bi-box-seam-fill text-success me-2"></i> Locker Assigned</h5>
+        </div>
+        <div class="modal-body">
+          <div class="floaty">
+            <h1 id="assignedLockerId" class="display-3 fw-bold text-warning">--</h1>
+            <p id="lockerActionText" class="text-muted mb-3">Proceed to your locker</p>
+            <div class="locker-scene mt-2">
+              <div id="locker3D" class="locker">
+                <div class="box">
+                  <div class="panel back"></div>
+                  <div class="panel bottom"></div>
+                  <div class="panel top"></div>
+                  <div class="panel left"></div>
+                  <div class="panel right"></div>
+                  <div class="door">
+                    <div class="mesh-window"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="lockerSubNote" class="mt-3 small text-muted">Door will open automatically</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- No Compartment Available Modal -->
+  <div class="modal fade" id="noCompartmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-center p-4"
+        style="background:#1a1a1a; color:white; border-radius:12px; box-shadow:0 0 25px rgba(255,0,0,0.8);">
+        <div class="modal-body">
+          <i class="fa-solid fa-triangle-exclamation fa-3x mb-3" style="color:#ff3333;"></i>
+          <h4>No Compartment Available</h4>
+          <p class="mt-2">No locker is available for this parcel size.</p>
+          <button class="btn btn-danger mt-3" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
-
 </html>

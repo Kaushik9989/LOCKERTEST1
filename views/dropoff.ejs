@@ -70,8 +70,16 @@
     }
 
     /* Fullscreen split */
-    .screen { min-height: 100svh; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; }
-    @media (max-width: 900px) { .screen { grid-template-columns: 1fr; } }
+    .screen {
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (max-width: 900px) {
+  .screen { grid-template-columns: 1fr; }
+}
+
+  
 
     .panel { position: relative; display: flex; align-items: center; justify-content: center; padding: clamp(16px, 3vw, 28px); isolation: isolate; overflow: hidden; }
     .panel--reserve { background: linear-gradient(135deg, rgba(255,123,0,0.08), rgba(255,123,0,0.02)); }
@@ -87,6 +95,9 @@
     .btn-black { background: linear-gradient(180deg, #222, #000); color: #fff; }
     .btn-black:hover { transform: translateY(-2px); filter: brightness(1.03); }
     .btn-black:active { transform: translateY(0); filter: brightness(0.98); }
+.panel--otp {
+  background: linear-gradient(135deg, rgba(0,150,136,0.08), rgba(0,150,136,0.02));
+}
 
     /* Make entire half clickable */
     .panel a { position: absolute; inset: 0; }
@@ -105,10 +116,11 @@
   <!-- Fullscreen two buttons only -->
   <main class="screen" role="main" aria-label="Terminal actions">
     <section class="panel panel--reserve">
-      <button id="reserve" class="terminal-btn btn-orange" aria-label="Reserve a locker">DROP</button>
-      <div class="label">Book a new Locker</div>
-      <a href="/terminal/phone" aria-hidden="true"></a>
+      <button id="reserve" class="terminal-btn btn-orange" aria-label="Reserve a locker">ENTER DROP CODE</button>
+      <div class="label">Deliver the Parcel</div>
+      <a href="/pickup-code" aria-hidden="true"></a>
     </section>
+
 
     <section class="panel panel--qr">
       <button id="showqr" class="terminal-btn btn-black" aria-label="Show QR">SHOW QR</button>
@@ -135,6 +147,12 @@
         });
       });
     })();
+  </script>
+  <script>
+    document.getElementById('enterOtp').addEventListener('click', function(){
+  window.location.href = '/terminal/drop-otp';
+});
+
   </script>
   <script>
 (function(){

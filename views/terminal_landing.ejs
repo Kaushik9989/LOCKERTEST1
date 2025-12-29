@@ -1,9 +1,13 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Droppoint — Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
 
   <style>
     :root {
@@ -12,299 +16,263 @@
       --black: #111111;
       --bg: #ffffff;
     }
+    * {
+  touch-action: manipulation;
+}
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* 🔴 important */
+  background: var(--bg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
 
-    /* ===== Logo pinned ===== */
+    /* Logo */
     .logo-wrap {
       position: fixed;
-      top: max(12px, env(safe-area-inset-top));
-      right: max(12px, env(safe-area-inset-left));
+      top: 12px;
+      right: 12px;
       z-index: 10;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 6px 10px;
       border-radius: 12px;
-      background: rgba(255,255,255,0.75);
-      backdrop-filter: blur(6px);
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
     }
 
     .logo {
-      width: 180px;
-      height: 80px;
-      object-fit: contain;
-      background-color: var(--black);
-      border-radius: 8px;
+      width: 160px;
+      height: auto;
     }
 
-    /* ===== Fullscreen split layout ===== */
-    .screen {
-      min-height: 100svh;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-auto-rows: 1fr;
-    }
+    /* Layout */
+.screen {
+  height: 100vh;
+  width: 100vw;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
 
     @media (max-width: 900px) {
-      .screen { grid-template-columns: 1fr; }
+      .screen {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .panel {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: clamp(16px, 3vw, 28px);
-      isolation: isolate;
-      overflow: hidden;
-    }
-
-    .panel--dropoff {
-      background: linear-gradient(135deg, rgba(255,123,0,0.08), rgba(255,123,0,0.02));
-    }
-
-    .panel--pickup {
-      background: linear-gradient(135deg, rgba(17,17,17,0.08), rgba(17,17,17,0.02));
-    }
-
-    .terminal-btn {
-      width: min(92%, 540px);
-      height: min(72vh, 360px);
-      border: none;
-      border-radius: 22px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      font-size: clamp(22px, 4.2vw, 42px);
-      cursor: pointer;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
-      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
-    }
-
-    .terminal-btn:focus-visible {
-      outline: 4px solid #0000;
-      box-shadow: 0 0 0 6px rgba(0,0,0,0.18), 0 14px 36px rgba(0,0,0,0.16);
-    }
-
-    .btn-orange {
-      background: linear-gradient(180deg, var(--orange), var(--orange-dark));
-      color: #fff;
-    }
-    .btn-orange:hover { transform: translateY(-2px); filter: brightness(1.03); }
-    .btn-orange:active { transform: translateY(0); filter: brightness(0.98); }
-
-    .btn-black {
-      background: linear-gradient(180deg, #222, #000);
-      color: #fff;
-    }
-    .btn-black:hover { transform: translateY(-2px); filter: brightness(1.03); }
-    .btn-black:active { transform: translateY(0); filter: brightness(0.98); }
-
-    .label {
-      position: absolute;
-      bottom: clamp(12px, 2.5vw, 24px);
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: clamp(12px, 2.4vw, 16px);
-      color: #444;
-      opacity: 0.9;
-      pointer-events: none;
-    }
-
-    /* Make entire half clickable for easier kiosk use */
-    .panel a { position:absolute; inset:0; }
-    .panel a:focus-visible { outline: none; }
-    /* Splash overlay for "close doors" */
-#lock-splash {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(2px);
-  display: none;               /* hidden by default */
-  place-items: center;
-  z-index: 9999;
-}
-#lock-splash.show { display: grid; }
-
-.lock-card {
-  width: min(92vw, 560px);
-  border-radius: 20px;
-  background: rgba(0,0,0,0.85);
+.panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   padding: 24px;
-  color: #fff;
-  text-align: center;
-  box-shadow: 0 18px 48px rgba(0,0,0,0.25);
 }
-.lock-card h2 {
-  margin: 0 0 8px;
-  font-size: clamp(20px, 3.2vw, 28px);
+
+
+    .panel.receive {
+      background: 
+     #ffffff;
+    }
+
+    .panel.send {
+      background: 
+       #ffffff;
+    }
+
+    .panel.store {
+      
+      background:  #5C7EA1;
+      background:  #ffffff;
+    }
+.terminal-btn {
+  width: min(90%, 420px);
+  height: min(48vh, 280px); /* 👈 reduced */
+  border-radius: 22px;
+  border: none;
+  font-size: clamp(22px, 4vw, 40px);
+  font-weight: 800;
+  letter-spacing: .05em;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .2);
+  animation: heartbeat 1s ease-in-out infinite;
 }
-.lock-card p {
-  margin: 6px 0 12px;
-  opacity: .95;
+
+
+
+    .terminal-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .receive-btn {
+      background: #F47C2C;
+      color: #fff;
+    }
+
+    .send-btn {
+      background: #F47C2C;
+      color: #ffffff;
+    }
+
+    .store-btn {
+      background:#F47C2C;
+      color: #ffffff;
+      
+    }
+
+.label {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+
+  color: rgba(0, 0, 0, 0.85);
 }
-.lock-list {
-  margin: 10px auto 0;
-  max-height: 160px;
-  overflow: auto;
-  text-align: left;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 14px;
+
+
+    /* Splash */
+    #lock-splash {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .55);
+      backdrop-filter: blur(3px);
+      display: none;
+      place-items: center;
+      z-index: 999;
+    }
+
+    #lock-splash.show {
+      display: grid;
+    }
+
+    .lock-card {
+      background: #111;
+      color: #fff;
+      padding: 24px;
+      border-radius: 18px;
+      text-align: center;
+      width: min(90%, 480px);
+    }
+
+    .lock-spinner {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 4px solid #ddd;
+      border-top-color: #fff;
+      animation: spin .9s linear infinite;
+      margin: 12px auto;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    @keyframes heartbeat {
+  0%   { transform: scale(1); }
+  10%  { transform: scale(1.03); }
+  20%  { transform: scale(1); }
+  30%  { transform: scale(1.03); }
+  40%  { transform: scale(1); }
+  100% { transform: scale(1); }
 }
-.lock-spinner {
-  width: 38px; height: 38px; margin: 14px auto 8px;
-  border-radius: 50%;
-  border: 4px solid #e5e5e5;
-  border-top-color: #111;
-  animation: lock-spin .9s linear infinite;
+
+/* Apply heartbeat */
+.heartbeat {
+  animation: heartbeat 1.6s ease-in-out infinite;
 }
-@keyframes lock-spin { to { transform: rotate(360deg); } }
-.lock-note { font-size: 12px; opacity: .8; margin-top: 6px; }
 
   </style>
 </head>
+
 <body>
+
   <!-- Logo -->
-  <div class="logo-wrap" aria-hidden="true">
-    <img src="/images/droppointlogo.png" alt="Droppoint logo" class="logo"/>
+  <div class="logo-wrap">
+    <img src="/images/droppointlogo.png" class="logo" />
   </div>
-  
-  <!-- Fullscreen two-option grid -->
-  <main class="screen" role="main">
-    <section class="panel panel--dropoff">
-      <button id="dropoff-btn" class="terminal-btn btn-orange" aria-label="Drop-off">
-        Drop-off
-      </button>
-      <div class="label">Place a parcel in a locker</div>
-      <a href="/dropoff" aria-hidden="true"></a>
+
+  <!-- Main UI -->
+  <main class="screen">
+
+    <!-- RECEIVE -->
+    <section class="panel receive">
+      <button class="terminal-btn receive-btn heartbeat" id="receiveBtn">PICKUP</button>
+      <div class="label"><b>Pick up</b> your parcel</div>
     </section>
 
-    <section class="panel panel--pickup">
-      <button id="pickup-btn" class="terminal-btn btn-black" aria-label="Pick-up">
-        Pick-up
-      </button>
-      <div class="label">Collect a parcel from a locker</div>
-      <a href="/pickup" aria-hidden="true"></a>
+    <!-- SEND -->
+    <section class="panel send">
+      <button class="terminal-btn send-btn heartbeat" id="sendBtn">SEND</button>
+      <div class="label"><b>Dispatch</b> a parcel</div>
     </section>
+
+    <!-- STORE -->
+    <section class="panel store">
+      <button class="terminal-btn store-btn heartbeat" id="storeBtn">STORE</button>
+      <div class="label"><b>Store</b> Luggage </div>
+    </section>
+
   </main>
-<!-- Lock-check splash -->
-<!-- <div id="lock-splash" role="dialog" aria-modal="true" aria-labelledby="lock-title" aria-hidden="true">
-  <div class="lock-card" role="alert" aria-live="assertive">
-    <h2 id="lock-title">Please close all lockers to continue</h2>
-    <p>We detected some doors are open. Close them firmly.</p>
-    <div class="lock-spinner" aria-hidden="true"></div>
-    <div id="lock-detail" class="lock-list" style="display:none"></div>
-    <div class="lock-note">This will continue automatically once all doors are locked.</div>
-  </div>
-</div> -->
 
- <script>
-  (function(){
-    const addrsParam = '0x00'; // 👉 set to '0x00' if you only have one controller
-    const splash = document.getElementById('lock-splash');
-    const detailBox = document.getElementById('lock-detail');
-    const dropBtn = document.getElementById('dropoff-btn');
-    const pickBtn  = document.getElementById('pickup-btn');
+  <!-- Lock check -->
+  <!-- <div id="lock-splash" role="dialog" aria-modal="true" aria-labelledby="lock-title" aria-hidden="true">
+    <div class="lock-card" role="alert" aria-live="assertive">
+      <h2 id="lock-title">Please close all lockers to continue</h2>
+      <p>We detected some doors are open. Close them firmly.</p>
+      <div class="lock-spinner" aria-hidden="true"></div>
+      <div id="lock-detail" class="lock-list" style="display:none"></div>
+      <div class="lock-note">This will continue automatically once all doors are locked.</div>
+    </div>
+  </div> -->
 
-    // prevent navigation while splash visible
-    function setNavEnabled(enabled){
-      [dropBtn, pickBtn].forEach(b=>{
-        if (!b) return;
-        b.disabled = !enabled;
-        b.style.opacity = enabled ? '1' : '.65';
-        b.style.pointerEvents = enabled ? 'auto' : 'none';
-      });
-      document.querySelectorAll('.panel a').forEach(a=>{
-        a.style.pointerEvents = enabled ? 'auto' : 'none';
-      });
-    }
+  <script>
+    (() => {
+      const splash = document.getElementById('lock-splash');
 
-    async function fetchAllLocked(){
-      try {
-        const r = await fetch(`/api/lockers/all-locked?addrs=${encodeURIComponent(addrsParam)}`, { cache: 'no-store' });
-        if (!r.ok) return { allLocked:false, unlockedList:[], perAddr:{} };
-        return await r.json();
-      } catch {
-        // On network error, be conservative and treat as not locked
-        return { allLocked:false, unlockedList:[], perAddr:{} };
-      }
-    }
+      const receiveBtn = document.getElementById('receiveBtn');
+      const sendBtn = document.getElementById('sendBtn');
+      const storeBtn = document.getElementById('storeBtn');
 
-    function renderUnlockedList(unlockedList, perAddr){
-      if (!unlockedList || unlockedList.length===0){
-        detailBox.style.display = 'none';
-        detailBox.innerHTML = '';
-        return;
-      }
-      const lines = unlockedList.map(u => {
-        const human = `· Comp ${u.index + 1}`; // map to your display as needed
-        return `• ${human} is OPEN`;
-      });
-      detailBox.innerHTML = lines.join('<br/>');
-      detailBox.style.display = 'block';
-    }
-
-    async function enforceLockedThenEnable(){
-      // initial check
-      let data = await fetchAllLocked();
-      if (data.allLocked){
-        splash.classList.remove('show');
-        splash.setAttribute('aria-hidden','true');
-        setNavEnabled(true);
-        return;
+      function setEnabled(enabled) {
+        [receiveBtn, sendBtn, storeBtn].forEach(b => {
+          b.disabled = !enabled;
+          b.style.opacity = enabled ? '1' : '.6';
+        });
       }
 
-      // show splash & start polling
-      splash.classList.add('show');
-      splash.removeAttribute('aria-hidden');
-      setNavEnabled(false);
-      renderUnlockedList(data.unlockedList, data.perAddr);
+      async function checkLocks() {
+        try {
+          const res = await fetch('/api/lockers/all-locked');
+          const data = await res.json();
 
-      const poll = async () => {
-        data = await fetchAllLocked();
-        if (data.allLocked){
-          splash.classList.remove('show');
-          splash.setAttribute('aria-hidden','true');
-          setNavEnabled(true);
-          return; // stop polling
+          if (data.allLocked) {
+            splash.classList.remove('show');
+            setEnabled(true);
+          } else {
+            splash.classList.add('show');
+            setEnabled(false);
+            setTimeout(checkLocks, 1000);
+          }
+        } catch {
+          splash.classList.add('show');
+          setEnabled(false);
+          setTimeout(checkLocks, 1500);
         }
-        renderUnlockedList(data.unlockedList, data.perAddr);
-        setTimeout(poll, 1000);
-      };
-      setTimeout(poll, 1000);
-    }
+      }
 
-    // Run once on load
-    enforceLockedThenEnable();
+      checkLocks();
 
-    // Navigate immediately (once enabled)
-    dropBtn.addEventListener('click', () => { if (!dropBtn.disabled) window.location.href = '/dropoff'; });
-    pickBtn .addEventListener('click', () => { if (!pickBtn .disabled) window.location.href = '/pickup'; });
+      receiveBtn.onclick = () => location.href = '/pickup';
+      sendBtn.onclick = () => location.href = '/dropoff';
+      storeBtn.onclick = () => location.href = '/terminal/phone';
 
-    // Make the whole panel clickable
-    document.querySelectorAll('.panel a').forEach(a => {
-      a.addEventListener('click', (e) => {
-        if (dropBtn.disabled || pickBtn.disabled) { e.preventDefault(); e.stopPropagation(); return; }
-        e.preventDefault();
-        e.stopPropagation();
-        window.location.href = a.getAttribute('href');
-      });
-      a.setAttribute('role','button');
-      a.setAttribute('tabindex','0');
-    });
-  })();
-</script>
+    })();
+  </script>
 
 </body>
+
 </html>

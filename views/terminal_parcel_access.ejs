@@ -1,309 +1,222 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Locker Opened</title>
-  <style>
-    :root{
-      --orange: #ff7b00;
-      --orange-dark: #e56e00;
-      --black: #111;
-      --gray: #666;
-      --bg: #ffffff;
-      --card-radius: 16px;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Locker Opened</title>
 
-    *{box-sizing:border-box;}
-    body{
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:var(--bg);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      color:var(--black);
-      padding:24px;
-    }
+<style>
+:root{
+  --orange:#ff7b00;
+  --orange-dark:#e56e00;
+  --black:#111;
+  --gray:#666;
+  --bg:#ffffff;
+}
 
-    .card{
-      width:100%;
-      max-width:520px;
-      background:#fff;
-      border:1px solid #eee;
-      border-radius:var(--card-radius);
-      padding:32px;
-      box-shadow:0 10px 30px rgba(17,17,17,0.06);
-      text-align:center;
-      position: relative;
-    }
+html, body{
+  height:100%;
+  margin:0;
+  overflow:hidden;          /* 🚫 no scroll */
+  user-select:none;
+  touch-action:manipulation;
+}
 
-    h2{
-      margin:0 0 12px 0;
-      font-size:1.6rem;
-      font-weight:700;
-    }
+body{
+  background:var(--bg);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto;
+  color:var(--black);
+}
 
-    p.message{
-      margin:0 0 10px 0;
-      color:var(--gray);
-      font-size:1rem;
-      font-weight:500;
-    }
+/* ⏱ TOP BAR */
+.timer-bar{
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  height:56px;
+  background:#fff7ed;
+  border-bottom:2px solid #ffe1c4;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  font-size:1.1rem;
+  z-index:1000;
+}
 
-    /* BIG ACCESS CODE */
-    .access-code{
-      font-size:3rem;
-      letter-spacing:8px;
-      font-weight:800;
-      margin:20px auto;
-      color:var(--black);
-      background:linear-gradient(90deg, rgba(255,123,0,0.08), rgba(255,181,107,0.04));
-      display:inline-block;
-      padding:16px 24px;
-      border-radius:14px;
-      border:2px dashed rgba(0,0,0,0.1);
-    }
+.timer-bar span{
+  color:var(--orange-dark);
+  margin-left:6px;
+}
 
-    .qr-wrap{
-      margin:18px auto 8px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .qr{
-      width:220px;
-      height:220px;
-      border-radius:12px;
-      border:1px solid #eee;
-      box-shadow:0 8px 20px rgba(0,0,0,0.05);
-      user-select:none;
-    }
+/* 🧱 MAIN WRAPPER */
+.wrapper{
+  height:100%;
+  padding-top:56px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
 
-    .save-hint{
-      font-size:0.95rem;
-      color:#333;
-      background:#fff7ed; /* light orange */
-      border:1px solid #ffe1c4;
-      padding:10px 12px;
-      border-radius:10px;
-      display:flex;
-      align-items:flex-start;
-      gap:10px;
-      margin:12px 0 4px;
-      text-align:left;
-    }
-    .save-hint b{ color:#000; }
+/* 📦 LANDSCAPE CARD */
+.card{
+  width:100%;
+  max-width:900px;
+  height:calc(100% - 56px);
+  padding:24px;
+  display:grid;
+  grid-template-columns: 1.2fr 1fr; /* text | QR */
+  gap:28px;
+  align-items:center;
+}
 
-    .countdown{
-      margin-top:16px;
-      font-weight:700;
-    }
+/* LEFT SIDE */
+.left{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
 
-    .actions{
-      margin-top:18px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:center;
-    }
+h2{
+  font-size:2rem;
+  margin:0 0 8px;
+  font-weight:900;
+}
 
-    .btn{
-      padding:0.8rem 1.2rem;
-      border-radius:10px;
-      border:none;
-      font-weight:700;
-      cursor:pointer;
-      font-size:1rem;
-      transition:background 0.2s ease, opacity .2s ease;
-    }
-    .btn-primary{
-      background:var(--orange);
-      color:#fff;
-    }
-    .btn-primary:hover{ background:var(--orange-dark); }
-    .btn-secondary{
-      background:#f2f2f2;
-      color:#111;
-    }
-    .btn-secondary:hover{ opacity:.9; }
+p{
+  margin:0 0 6px;
+  font-size:1.1rem;
+  color:var(--gray);
+}
 
-    /* Simple “take a photo” prompt overlay */
-    .prompt-overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.45);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      z-index: 9999;
-    }
-    .prompt{
-      width: 100%;
-      max-width: 520px;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 20px 50px rgba(0,0,0,.2);
-      padding: 22px;
-      text-align: left;
-      border: 1px solid #eee;
-    }
-    .prompt h3{
-      margin: 0 0 6px 0;
-      font-size: 1.25rem;
-    }
-    .prompt p{
-      margin: 0 0 16px 0;
-      color: var(--gray);
-    }
-    .prompt .prompt-actions{
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      margin-top: 8px;
-    }
+/* ACCESS CODE */
+.access-code{
+  margin:16px 0;
+  font-size:3.4rem;
+  letter-spacing:10px;
+  font-weight:900;
+  background:linear-gradient(90deg, rgba(255,123,0,.12), rgba(255,181,107,.05));
+  padding:18px 26px;
+  border-radius:18px;
+  border:2px dashed rgba(0,0,0,.15);
+  display:inline-block;
+}
 
-    @media (max-width:420px){
-      .access-code{font-size:2.2rem; letter-spacing:4px; padding:12px 18px;}
-      .card{padding:24px;}
-      .qr{width:200px; height:200px;}
-    }
-  </style>
+/* RIGHT SIDE */
+.right{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+
+.qr{
+  width:260px;
+  height:260px;
+  border-radius:16px;
+  border:1px solid #eee;
+  box-shadow:0 12px 30px rgba(0,0,0,.12);
+}
+
+/* HINT */
+.hint{
+  margin-top:14px;
+  padding:12px 14px;
+  font-size:1rem;
+  background:#fff7ed;
+  border:1px solid #ffe1c4;
+  border-radius:12px;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+
+/* BUTTON */
+.btn{
+  margin-top:18px;
+  padding:1rem 1.2rem;
+  font-size:1.2rem;
+  font-weight:900;
+  border-radius:16px;
+  border:none;
+  width:100%;
+  background:var(--orange);
+  color:#fff;
+}
+
+.btn:active{
+  background:var(--orange-dark);
+}
+
+/* SMALL SCREENS (still landscape) */
+@media (max-height: 500px){
+  .access-code{
+    font-size:2.8rem;
+    letter-spacing:6px;
+  }
+  .qr{
+    width:220px;
+    height:220px;
+  }
+}
+</style>
 </head>
+
 <body>
-  <main class="card" role="main">
-    <h2>Locker opened</h2>
-    <p class="message">Place your baggage inside.</p>
-    <p class="message">Use this access code to pick up your parcel:</p>
 
-    <div class="access-code" role="status" aria-live="polite"><%= accessCode %></div>
+<!-- ⏱ TIMER -->
+<div class="timer-bar">
+  Returning to home in <span id="timer">15</span>s
+</div>
 
-    <!-- QR preview (rendered from the Data URL you generated on the server) -->
-    <div class="qr-wrap">
-      <img
-        class="qr"
-        src="<%= qrImage %>"
-        alt="QR code for pickup (access code <%= accessCode %>)"
-        draggable="false"
-        id="qrImg"
-      />
-    </div>
+<div class="wrapper">
+  <main class="card">
 
-    <div class="save-hint" id="saveHint" role="alert" aria-live="assertive">
-      <div aria-hidden="true" style="font-size:1.3rem;line-height:1.2rem;">📷</div>
-      <div>
-        <b>Take a photo or save this QR.</b><br/>
-        You’ll need to show this QR (or the access code) at pickup.
-      
-      </div>
-    </div>
+    <!-- LEFT -->
+    <section class="left">
+      <h2>Locker Opened</h2>
+      <p>Place your baggage inside the locker</p>
+      <p><b>Use this access code during pickup</b></p>
 
-    <div class="actions">
-      <form method="get" action="/">
-        <button type="submit" class="btn btn-primary" id="goHomeBtn">Go home</button>
+      <div class="access-code"><%= accessCode %></div>
+
+      <form action="/" method="get">
+        <button class="btn">Go Home</button>
       </form>
-    </div>
+    </section>
 
-    <p style="margin-top:10px;font-size:0.95rem;"><b>PLEASE REMEMBER YOUR ACCESS CODE</b> or taka a photo of the QR to avoid delays at pickup.</p>
+    <!-- RIGHT -->
+    <section class="right">
+      <img class="qr" src="<%= qrImage %>" alt="Pickup QR Code" />
 
-    <div class="countdown" id="countdown">Redirecting to home in <span id="timer">25</span>s…</div>
-  </main>
-
-  <!-- Take-a-photo prompt (shows once per device unless cleared) -->
-  <div class="prompt-overlay" id="photoPrompt">
-    <div class="prompt" role="dialog" aria-modal="true" aria-labelledby="photoPromptTitle">
-      <h3 id="photoPromptTitle">Before you go</h3>
-      <p>Take a quick photo of this screen or save the QR so you can show it again during pickup.</p>
-      <div class="prompt-actions">
-        <button class="btn btn-secondary" id="promptLater">Remind me later</button>
-        <button class="btn btn-primary" id="promptDone">I took a photo</button>
+      <div class="hint">
+        📷
+        <div>
+          <b>Save this QR or take a photo.</b><br/>
+          Required for parcel pickup.
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <script>
-    (function(){
-      var seconds = 25;
-      var timerEl = document.getElementById('timer');
-      var goHomeBtn = document.getElementById('goHomeBtn');
-      var countdownInterval = setInterval(function(){
-        seconds--;
-        if (timerEl) timerEl.textContent = seconds;
-        if (seconds <= 0) {
-          clearInterval(countdownInterval);
-          window.location.href = '/';
-        }
-      }, 1000);
+  </main>
+</div>
 
-      goHomeBtn.addEventListener('click', function(){
-        clearInterval(countdownInterval);
-      });
+<script>
+(function(){
+  let seconds = 15;
+  const timer = document.getElementById("timer");
 
-      window.addEventListener('keydown', function(e){
-        if (e.key === 'Escape') {
-          clearInterval(countdownInterval);
-          var cd = document.getElementById('countdown');
-          if (cd) cd.textContent = 'Auto-redirect cancelled';
-        }
-      });
+  const interval = setInterval(()=>{
+    seconds--;
+    timer.textContent = seconds;
+    if(seconds <= 0){
+      clearInterval(interval);
+      location.href="/";
+    }
+  },1000);
+})();
+</script>
 
-      // Print shortcut
-      document.getElementById('printBtn').addEventListener('click', function(){
-        window.print();
-      });
-
-      // Show one-time “take a photo” prompt (per browser/device)
-      var promptKey = 'locker_take_photo_prompt_ack';
-      var overlay = document.getElementById('photoPrompt');
-      function showPrompt(){
-        overlay.style.display = 'flex';
-      }
-      function hidePrompt(){
-        overlay.style.display = 'none';
-      }
-      if (!localStorage.getItem(promptKey)) {
-        // Pause countdown while prompt is visible
-        var paused = false;
-        function pauseCountdown(){
-          if (!paused) {
-            clearInterval(countdownInterval);
-            paused = true;
-          }
-        }
-        function resumeCountdown(){
-          if (paused) {
-            paused = false;
-            countdownInterval = setInterval(function(){
-              seconds--;
-              if (timerEl) timerEl.textContent = seconds;
-              if (seconds <= 0) {
-                clearInterval(countdownInterval);
-                window.location.href = '/';
-              }
-            }, 1000);
-          }
-        }
-        showPrompt();
-        pauseCountdown();
-        document.getElementById('promptDone').addEventListener('click', function(){
-          localStorage.setItem(promptKey, '1');
-          hidePrompt();
-          resumeCountdown();
-        });
-        document.getElementById('promptLater').addEventListener('click', function(){
-          hidePrompt();
-          resumeCountdown();
-        });
-      }
-
-      // Small UX tweak: hide “long-press” hint on non-touch devices
-      if (!('ontouchstart' in window)) {
-        var el = document.querySelector('.only-touch');
-        if (el) el.style.display = 'none';
-      }
-    })();
-  </script>
 </body>
 </html>

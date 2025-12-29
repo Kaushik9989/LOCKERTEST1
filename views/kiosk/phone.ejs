@@ -1,0 +1,22 @@
+<div class="kiosk">
+  <div class="card">
+    <h1>Enter Customer Phone</h1>
+    <p>OTP will be sent to the receiver</p>
+
+    <input id="phone" maxlength="10" placeholder="9XXXXXXXXX" />
+
+    <button onclick="sendOtp()">Send OTP</button>
+  </div>
+</div>
+
+<%- include("partials/style") %>
+
+<script>
+function sendOtp(){
+  fetch("/api/kiosk/send-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: phone.value })
+  }).then(() => location.href = "/kiosk/otp");
+}
+</script>

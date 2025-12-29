@@ -1,0 +1,25 @@
+<div class="kiosk">
+  <div class="card">
+    <h1>Enter OTP</h1>
+    <p>Sent to <%= phone %></p>
+
+    <input id="otp" maxlength="6" placeholder="••••••" />
+
+    <button onclick="verify()">Verify OTP</button>
+  </div>
+</div>
+
+<%- include("partials/style") %>
+
+<script>
+function verify(){
+  fetch("/api/kiosk/verify-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ otp: otp.value })
+  }).then(res => {
+    if(res.ok) location.href="/kiosk/size";
+    else alert("Invalid OTP");
+  });
+}
+</script>

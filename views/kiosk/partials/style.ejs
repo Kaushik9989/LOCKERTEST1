@@ -1,0 +1,130 @@
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #020617;
+    --accent: #38bdf8;
+    --accent-dark: #0284c7;
+    --text: #e5e7eb;
+    --muted: #94a3b8;
+    --danger: #ef4444;
+    --success: #22c55e;
+  }
+
+  * {
+    box-sizing: border-box;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: radial-gradient(circle at top, #020617, #020617 40%, #000);
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  .kiosk {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card {
+    width: 420px;
+    background: linear-gradient(180deg, #020617, #020617);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 26px;
+    margin-bottom: 8px;
+  }
+
+  p {
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+
+  input {
+    width: 100%;
+    font-size: 26px;
+    padding: 16px;
+    border-radius: 16px;
+    border: none;
+    outline: none;
+    text-align: center;
+    letter-spacing: 4px;
+    background: #020617;
+    color: var(--text);
+    border: 2px solid #1e293b;
+  }
+
+  button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 18px;
+    font-size: 20px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+    color: #020617;
+    font-weight: 600;
+    transition: transform 0.1s ease;
+  }
+
+  button:active {
+    transform: scale(0.97);
+  }
+
+  button:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .sizes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .size-btn {
+    height: 120px;
+    border-radius: 20px;
+    font-size: 22px;
+    font-weight: 600;
+    background: #020617;
+    border: 2px solid #1e293b;
+    color: var(--text);
+  }
+
+  .size-btn.active {
+    border-color: var(--accent);
+    background: rgba(56,189,248,0.1);
+  }
+
+  .loader {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 6px solid #1e293b;
+    border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+    margin: 0 auto 24px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .success {
+    color: var(--success);
+    font-size: 22px;
+    font-weight: 600;
+  }
+</style>

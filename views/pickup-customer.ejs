@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Enter Drop OTP</title>
+
+<style>
+body{
+  margin:0;
+  height:100svh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#111;
+  color:#fff;
+  font-family:system-ui;
+}
+
+.card{
+  background:#000;
+  padding:32px;
+  border-radius:20px;
+  width:min(92%,420px);
+  text-align:center;
+  box-shadow:0 20px 40px rgba(0,0,0,.5);
+}
+
+h1{
+  margin-bottom:20px;
+  font-size:28px;
+}
+
+input{
+  width:100%;
+  font-size:32px;
+  letter-spacing:10px;
+  text-align:center;
+  padding:16px;
+  border-radius:14px;
+  border:none;
+  outline:none;
+  margin-bottom:20px;
+}
+
+.keypad{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:14px;
+}
+
+.keypad button{
+  height:64px;
+  font-size:26px;
+  font-weight:700;
+  border-radius:14px;
+  border:none;
+  cursor:pointer;
+  background:#222;
+  color:#fff;
+  transition:transform .1s ease, background .1s ease;
+}
+
+.keypad button:active{
+  transform:scale(.96);
+  background:#333;
+}
+
+.keypad .action{
+  background:#444;
+}
+
+.submit-btn{
+  margin-top:20px;
+  width:100%;
+  padding:16px;
+  font-size:20px;
+  font-weight:700;
+  border-radius:14px;
+  border:none;
+  cursor:pointer;
+  background:linear-gradient(180deg,#ff7b00,#e56e00);
+  color:#fff;
+}
+.success-box{
+  margin-bottom:16px;
+  padding:14px;
+  border-radius:12px;
+  background:#28a745;
+  color:#fff;
+  font-weight:700;
+  text-align:center;
+}
+
+.error-box{
+  margin-bottom:16px;
+  padding:12px;
+  border-radius:12px;
+  background:#ff3b3b;
+  color:#fff;
+  font-weight:600;
+  text-align:center;
+}
+.back-link{
+  display:block;
+  margin-top:14px;
+  text-align:center;
+  color:#bbb;
+  font-weight:600;
+  text-decoration:none;
+}
+
+.back-link:hover{
+  color:#fff;
+}
+
+</style>
+</head>
+
+<body>
+  <form class="card" method="POST" action="/terminal/pick-otp/verify">
+
+    <h1>Enter pickup Code</h1>
+
+    <% if (success) { %>
+      <div class="success-box">
+        🔓 Locker opened successfully
+      </div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="error-box">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <input
+      id="otpInput"
+      type="text"
+      name="otp"
+      maxlength="6"
+      readonly
+      required
+    />
+
+    <!-- On-screen keypad -->
+    <div class="keypad">
+      <button type="button" onclick="press('1')">1</button>
+      <button type="button" onclick="press('2')">2</button>
+      <button type="button" onclick="press('3')">3</button>
+
+      <button type="button" onclick="press('4')">4</button>
+      <button type="button" onclick="press('5')">5</button>
+      <button type="button" onclick="press('6')">6</button>
+
+      <button type="button" onclick="press('7')">7</button>
+      <button type="button" onclick="press('8')">8</button>
+      <button type="button" onclick="press('9')">9</button>
+
+      <button type="button" class="action" onclick="clearOtp()">CLEAR</button>
+      <button type="button" onclick="press('0')">0</button>
+      <button type="button" class="action" onclick="backspace()">⌫</button>
+    </div>
+
+    <button class="submit-btn" type="submit">UNLOCK</button>
+
+    <a href="/" class="back-link">← Go Back</a>
+  </form>
+
+<script>
+  const input = document.getElementById('otpInput');
+
+  function press(num){
+    if(input.value.length >= 6) return;
+    input.value += num;
+  }
+
+  function backspace(){
+    input.value = input.value.slice(0, -1);
+  }
+
+  function clearOtp(){
+    input.value = '';
+  }
+</script>
+</body>
+
+</html>

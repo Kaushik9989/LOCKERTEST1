@@ -3,7 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 mongoose.set("bufferCommands", false);
 mongoose.set("bufferTimeoutMS", 0);
-const lockerID = "L02";
+const lockerID = "L00002";
 const { Server } = require("socket.io");
 const crypto = require("node:crypto");
 const cors = require("cors");
@@ -27,7 +27,7 @@ const PORT = 8000;
 const ejsMate = require("ejs-mate");
 const flash = require("connect-flash");
 const expressLayouts = require("express-ejs-layouts");
-const TERMINAL_ID = "L02";
+const TERMINAL_ID = "L00002";
 const QRCode = require("qrcode");
 require("dotenv").config();
 const compression = require("compression");
@@ -65,6 +65,11 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(cors());
 app.use(express.json());
+app.use(require("express-session")({
+  secret: "kiosk-secret",
+  resave: false,
+  saveUninitialized: true
+}));
 
 app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
@@ -472,18 +477,69 @@ app.post(
           message: "Specified locker not found.",
         });
       }
-      let compartment;
+let compartment;
+const now = new Date();
 
-      compartment = locker.compartments.find(
-        (c) => !c.isBooked && c.size === parcel.size
-      );
+// 1️⃣ First, reclaim overstayed compartments of required size
+for (const c of locker.compartments) {
+  if (
+    c.size !== parcel.size ||
+    !c.isBooked ||
+    !c.isOverstay ||
+    !c.currentParcelId
+  ) continue;
 
-      if (!compartment) {
-        return res.status(400).json({
-          success: false,
-          message: "No available compartments in this locker.",
-        });
-      }
+  const oldParcel = await Parcel2.findOne({
+    customId: c.currentParcelId
+  });
+
+  if (!oldParcel) {
+    // Corrupt state → just free it
+    c.isBooked = false;
+    c.isOverstay = false;
+    c.currentParcelId = null;
+    continue;
+  }
+
+  // 📢 Notify old parcel user
+  try {
+    await client.messages.create({
+      to: `whatsapp:+91${oldParcel.receiverPhone}`,
+      from: "whatsapp:+15558076515",
+      contentSid: "HXaf300dc862c5bf433a99649bf553a34e",
+      contentVariables: JSON.stringify({
+        2: oldParcel.customId
+      })
+    });
+  } catch (err) {
+    console.error("❌ Overstay notify failed:", err.message);
+  }
+
+  // 📦 Mark old parcel as unavailable
+  oldParcel.status = "expired";
+  await oldParcel.save();
+
+  // 🧹 Free the compartment
+  c.isBooked = false;
+  c.isOverstay = false;
+  c.currentParcelId = null;
+}
+
+// 2️⃣ Now find a free compartment
+compartment = locker.compartments.find(
+  (c) => !c.isBooked && c.size === parcel.size
+);
+
+if (!compartment) {
+  return res.status(400).json({
+    success: false,
+    message: "No available compartments in this locker.",
+  });
+}
+
+// 3️⃣ Persist locker changes
+await locker.save();
+
 
       let addr = 0x00;
       let lockNum = parseInt(compartment.compartmentId);
@@ -493,30 +549,30 @@ app.post(
         lockNum = lockNum - 12; // reset to 0–11 range
       }
 
-      const sent = await sendUnlock(lockNum, addr);
-      if (!sent) {
-        console.warn(
-          `❌ Failed to send unlock packet to locker ${compartment.compartmentId}`
-        );
-        return res
-          .status(502)
-          .json({ success: false, message: "Failed to send unlock packet." });
-      }
+      // const sent = await sendUnlock(lockNum, addr);
+      // if (!sent) {
+      //   console.warn(
+      //     `❌ Failed to send unlock packet to locker ${compartment.compartmentId}`
+      //   );
+      //   return res
+      //     .status(502)
+      //     .json({ success: false, message: "Failed to send unlock packet." });
+      // }
 
-      // 2) Verify unlocked
-      await wait(500);
-      const status = await checkLockerStatus(addr, lockNum, 2000);
-      if (status !== "Unlocked") {
-        return res.status(504).json({
-          success: false,
-          message: "Compartment did not unlock (timeout or still locked).",
-          details: { addr, lockNum, reported: status || null },
-        });
-      }
+      // //2) Verify unlocked
+      // await wait(500);
+      // const status = await checkLockerStatus(addr, lockNum, 2000);
+      // if (status !== "Unlocked") {
+      //   return res.status(504).json({
+      //     success: false,
+      //     message: "Compartment did not unlock (timeout or still locked).",
+      //     details: { addr, lockNum, reported: status || null },
+      //   });
+      // }
 
       // Lock the compartment
       compartment.isBooked = true;
-      compartment.currentParcelId = parcel._id;
+      compartment.currentParcelId = parcel.customId;
       await locker.save();
 
       // Update parcel with locker info
@@ -537,7 +593,7 @@ app.post(
           contentSid: "HXa7a69894f9567b90c1cacab6827ff46c",
           contentVariables: JSON.stringify({
             1: parcel.senderName,
-            2: `mobile/incoming/${parcel._id}/qr`,
+            2: `mobile/incoming/${parcel.customId}/qr`,
           }),
         });
     const smsText2 = `Item successfully dropped at Locker ${locker.lockerId}. Pickup code: ${parcel.accessCode}. Share this securely. Receiver can also access via ${`https://demo.droppoint.in/${parcel.customId}/qr`} - DROPPOINT`;
@@ -551,14 +607,14 @@ app.post(
           contentVariables: JSON.stringify({
             1: parcel.receiverName,
             2: parcel.senderName,
-            3: `mobile/incoming/${parcel._id}/qr`,
+            3: `mobile/incoming/${parcel.customId}/qr`,
             4: `dir/?api=1&destination=${parcel.lockerLat},${parcel.lockerLng}`,
           }),
         });
         
       }
-        const smsText3 = `Item successfully dropped at Locker ${locker.lockerId}. Pickup code: ${parcel.accessCode}. Share this securely. Receiver can also access via ${`https://demo.droppoint.in/${parcel.customId}/qr`} - DROPPOINT`;
-        
+         const smsText3 = `Item successfully dropped at Locker ${locker.lockerId}. Pickup code: ${parcel.accessCode}. Share this securely. Receiver can also access via ${`https://demo.droppoint.in/qr?parcelid=${parcel.customId}`} - DROPPOINT`;
+          
         const sendResult3 = sendSMS(`91${parcel.senderPhone}`,smsText3);
         console.log(sendResult3);
       io.emit("parcelUpdated", {
@@ -579,7 +635,7 @@ app.post(
       });
     }
 
-    if (parcel.status === "awaiting_pick" || parcel.status === "in_locker") {
+    if (parcel.status === "awaiting_pick" || parcel.status === "in_locker" || parcel.status === "overstay") {
       // This is a pickup
 
       const [accessCode, lockerId] = req.body.split("///");
@@ -598,13 +654,20 @@ app.post(
           message: `This parcel belongs to locker ${parcel.lockerId}. Please scan it at the correct locker.`,
         });
       }
+    
+
+      if (["picked", "closed_no_charge"].includes(parcel.status)) {
+        return res.json({
+          success: false,
+          message: "Parcel service already closed"
+        });
+      }
 
       // Find locker and compartment
       const locker = await Locker.findOne({ lockerId: parcel.lockerId });
 
       if (!locker) {
         return res
-          .status(404)
           .json({ success: false, message: "Locker not found." });
       }
 
@@ -615,6 +678,87 @@ app.post(
         return res.json({ success: false, message: "Compartment not found." });
       }
 
+            if (
+        !compartment ||
+        compartment.currentParcelId?.toString() !== parcel.customId.toString()
+      ) {
+        await Parcel2.updateOne(
+          { _id: parcel._id },
+          {
+            $set: {
+              status: "closed_no_charge",
+              closureReason: "reassigned_no_charge",
+              "billing.isChargeable": false,
+              "billing.amountAccrued": 0
+            }
+          }
+        );
+
+        return res.json({
+          success: false,
+          message: "Parcel no longer available. Locker was reassigned."
+        });
+      }
+
+      const now = new Date();
+
+       if (parcel.expiresAt < now && parcel.status !== "overstay"){
+        await Parcel2.updateOne(
+          { _id: parcel._id },
+          {
+            $set: {
+              status: "overstay",
+              "billing.isChargeable": true
+            }
+          }
+        );
+        parcel.status = "overstay";
+      }
+
+        if (parcel.status === "overstay") {
+        let amount = parcel.billing.amountAccrued;
+        if(parcel.billing.amountAccured == 0){
+          const diffMs = now - parcel.expiresAt;
+        const hours = Math.ceil(diffMs / (1000 * 60 * 60));
+        const rate = RATE_BY_SIZE[parcel.size] || 0;
+        amount = hours * rate;
+
+        await Parcel2.updateOne(
+          { _id: parcel._id },
+          { $set: { "billing.amountAccrued": amount } }
+        );
+        }
+        
+
+        if (amount > 0 ) {
+          if (!parcel.razorpayOrderId) {
+            const order = await razorpay.orders.create({
+              amount: amount * 100,
+              currency: "INR",
+              receipt: `parcel_${parcel.customId}`
+            });
+
+            await Parcel2.updateOne(
+              { _id: parcel._id },
+              {
+                $set: {
+                  razorpayOrderId: order.id,
+                  cost: amount,
+                  paymentStatus: "pending"
+                }
+              }
+            );
+          }
+
+          return res.json({
+            success: false,
+            paymentRequired: true,
+            message: `Please pay ₹${amount} to unlock`,
+            paymentPage: `/pay/${parcel.customId}`,
+            amount
+          });
+        }
+      }
 
 
       let addr1 = 0x00;
@@ -625,25 +769,25 @@ app.post(
         lockNum1 = lockNum1 - 12; // reset to 0–11 range
       }
       const sent = await sendUnlock(lockNum1, addr1);
-      if (!sent) {
-        console.warn(
-          `❌ Failed to send unlock packet to locker ${compartment.compartmentId}`
-        );
-        return res
-          .status(502)
-          .json({ success: false, message: "Failed to send unlock packet." });
-      }
+      // if (!sent) {
+      //   console.warn(
+      //     `❌ Failed to send unlock packet to locker ${compartment.compartmentId}`
+      //   );
+      //   return res
+      //     .status(502)
+      //     .json({ success: false, message: "Failed to send unlock packet." });
+      // }
 
-      // 2) Verify unlocked
-      await wait(500);
-      const status = await checkLockerStatus(addr1, lockNum1, 2000);
-      if (status !== "Unlocked") {
-        return res.status(504).json({
-          success: false,
-          message: "Compartment did not unlock (timeout or still locked).",
-          details: { addr: addr1, lockNum: lockNum1, reported: status || null },
-        });
-      }
+      // // 2) Verify unlocked
+      // await wait(500);
+      // const status = await checkLockerStatus(addr1, lockNum1, 2000);
+      // if (status !== "Unlocked") {
+      //   return res.status(504).json({
+      //     success: false,
+      //     message: "Compartment did not unlock (timeout or still locked).",
+      //     details: { addr: addr1, lockNum: lockNum1, reported: status || null },
+      //   });
+      // }
 
       // Otherwise: normal pickup flow
      
@@ -660,6 +804,7 @@ app.post(
      
       compartment.isBooked = false;
       compartment.currentParcelId = null;
+      compartment.isOverstay = false;
       await locker.save();
 
       // Update parcel
@@ -704,8 +849,12 @@ app.post(
   }
 );
 
-app.get("/", (req, res) => {
-  res.render("terminal_landing");
+app.get("/", async(req, res) => {
+   const locker = await Locker.findOne({ lockerId: lockerID });
+  res.render("terminal_landing",{
+    lockerId: locker.lockerId,
+    compartments: locker.compartments,
+  });
 });
 app.get("/dropoff", (req, res) => {
   res.render("dropoff");
@@ -716,9 +865,21 @@ app.get("/pickup", (req, res) => {
 });
 
 app.get("/pickup-code", (req, res) => {
-  res.render("pickup-code");
+  res.render("pickup-code", {
+    pickup : true
+  });
+});
+app.get("/drop-code", (req, res) => {
+  res.render("pickup-code", {
+    pickup : false
+  });
 });
 
+app.get("/delivery-code", (req, res) => {
+  res.render("pickup-code", {
+    pickup : false
+  });
+});
 // helper
 const RATE_BY_SIZE = {
   small: 5,
@@ -734,311 +895,533 @@ function calculateOverdueHours(expiresAt) {
 }
 
 
+    //  // ============= DROP-OFF FLOW =============
+    //   if (parcel.status === "awaiting_drop") {
+    //     if (!lockerId) {
+    //       return res
+    //         .status(400)
+    //         .json({
+    //           success: false,
+    //           message: "Locker ID is required for drop-off.",
+    //         });
+    //     }
 
+    //     // If already assigned, enforce same locker
+    //     if (parcel.lockerId && parcel.lockerId !== lockerId) {
+    //       return res.status(400).json({
+    //         success: false,
+    //         message: `This parcel is assigned to locker ${parcel.lockerId}.`,
+    //         lockerMismatch: true,
+    //         expectedLocker: parcel.lockerId,
+    //       });
+    //     }
 
+    //     const locker = await Locker.findOne({ lockerId });
+    //     if (!locker) {
+    //       return res
+    //         .status(404)
+    //         .json({ success: false, message: "Locker not found." });
+    //     }
 
-
-
-
-
-
-
-
-app.post(
-  "/api/locker/unlock-code",
-  express.json({ type: ["application/json", "text/plain", "*/json"] }),
-  async (req, res) => {
-    try {
-      let { accessCode, lockerId } = req.body || {};
-      accessCode = parseInt(accessCode);
-      console.log("🔑 Unlock Request:", { accessCode, lockerId });
-
-      if (!accessCode) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Access code is required." });
-      }
-
-      const parcel = await Parcel2.findOne({ accessCode });
-      if (!parcel) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Parcel not found." });
-      }
-
-      if (parcel.status === "picked") {
-        return res
-          .status(400)
-          .json({ success: false, message: "Parcel already picked up." });
-      }
-
-      // ============= DROP-OFF FLOW =============
-      if (parcel.status === "awaiting_drop") {
-        if (!lockerId) {
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Locker ID is required for drop-off.",
-            });
-        }
-
-        // If already assigned, enforce same locker
-        if (parcel.lockerId && parcel.lockerId !== lockerId) {
-          return res.status(400).json({
-            success: false,
-            message: `This parcel is assigned to locker ${parcel.lockerId}.`,
-            lockerMismatch: true,
-            expectedLocker: parcel.lockerId,
-          });
-        }
-
-        const locker = await Locker.findOne({ lockerId });
-        if (!locker) {
-          return res
-            .status(404)
-            .json({ success: false, message: "Locker not found." });
-        }
-
-        // pick a free compartment matching size
-        const compartment = locker.compartments.find(
-          (c) => !c.isBooked && c.size === parcel.size
-        );
-        if (!compartment) {
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "No available compartments in this locker.",
-            });
-        }
+    //     // pick a free compartment matching size
+    //     const compartment = locker.compartments.find(
+    //       (c) => !c.isBooked && c.size === parcel.size
+    //     );
+    //     if (!compartment) {
+    //       return res
+    //         .status(400)
+    //         .json({
+    //           success: false,
+    //           message: "No available compartments in this locker.",
+    //         });
+    //     }
 
         
-        // map to controller address + index (0..11)
-        let addr = 0x00;
-        let lockNum = parseInt(compartment.compartmentId);
-        if (lockNum > 11) {
-          addr = 0x01;
-          lockNum = lockNum - 12;
-        }
+    //     // map to controller address + index (0..11)
+    //     let addr = 0x00;
+    //     let lockNum = parseInt(compartment.compartmentId);
+    //     if (lockNum > 11) {
+    //       addr = 0x01;
+    //       lockNum = lockNum - 12;
+    //     }
 
-        // 1) send unlock
-        const sent = await sendUnlock(lockNum, addr);
-        if (!sent) {
-          console.warn(
-            `❌ Failed to send unlock packet to locker ${compartment.compartmentId}`
-          );
-          return res
-            .status(502)
-            .json({ success: false, message: "Failed to send unlock packet." });
-        }
+    //     // 1) send unlock
+    //     const sent = await sendUnlock(lockNum, addr);
+    //     if (!sent) {
+    //       console.warn(
+    //         `❌ Failed to send unlock packet to locker ${compartment.compartmentId}`
+    //       );
+    //       return res
+    //         .status(502)
+    //         .json({ success: false, message: "Failed to send unlock packet." });
+    //     }
 
-        // 2) verify hardware actually unlocked
-        await wait(500);
-        const status = await checkLockerStatus(addr, lockNum, 2000);
-        if (status !== "Unlocked") {
-          return res.status(504).json({
-            success: false,
-            message: "Compartment did not unlock (timeout or still locked).",
-            details: { addr, lockNum, reported: status || null },
-          });
-        }
+    //     // 2) verify hardware actually unlocked
+    //     await wait(500);
+    //     const status = await checkLockerStatus(addr, lockNum, 2000);
+    //     if (status !== "Unlocked") {
+    //       return res.status(504).json({
+    //         success: false,
+    //         message: "Compartment did not unlock (timeout or still locked).",
+    //         details: { addr, lockNum, reported: status || null },
+    //       });
+    //     }
 
-        // 3) update DB ONLY NOW (door is unlocked/open)
-        // it's unlocked now
-        compartment.isBooked = true; // reserving for this parcel
-        compartment.currentParcelId = parcel._id;
-        await locker.save();
+    //     // 3) update DB ONLY NOW (door is unlocked/open)
+    //     // it's unlocked now
+    //     compartment.isBooked = true; // reserving for this parcel
+    //     compartment.currentParcelId = parcel._id;
+    //     await locker.save();
 
-        // parcel now awaiting_pick (user will place item and close door)
-        parcel.status = "awaiting_pick";
-        parcel.lockerLat = locker.location.lat;
-        parcel.lockerLng = locker.location.lng;
-        parcel.lockerId = locker.lockerId; // assign
-        parcel.compartmentId = compartment.compartmentId;
-        parcel.UsercompartmentId = parseInt(compartment.compartmentId) + 1;
-        parcel.droppedAt = new Date();
-        await parcel.save();
+    //     // parcel now awaiting_pick (user will place item and close door)
+    //     parcel.status = "awaiting_pick";
+    //     parcel.lockerLat = locker.location.lat;
+    //     parcel.lockerLng = locker.location.lng;
+    //     parcel.lockerId = locker.lockerId; // assign
+    //     parcel.compartmentId = compartment.compartmentId;
+    //     parcel.UsercompartmentId = parseInt(compartment.compartmentId) + 1;
+    //     parcel.droppedAt = new Date();
+    //     await parcel.save();
 
-        // notifications
-        if (parcel.store_self) {
-          await client.messages.create({
-            to: `whatsapp:+91${parcel.senderPhone}`,
-            from: "whatsapp:+15558076515",
-            contentSid: "HXa7a69894f9567b90c1cacab6827ff46c",
-            contentVariables: JSON.stringify({
-              1: parcel.senderName,
-              2: `mobile/incoming/${parcel._id}/qr`,
-            }),
-          });
-          const smsText1 = `Item successfully dropped at Locker ${locker.lockerId}. Pickup code: ${parcel.accessCode}. Share this securely. Receiver can also access via ${`https://demo.droppoint.in/${parcel.customId}/qr`} - DROPPOINT`;
-          const sendResult1 = sendSMS(`91${parcel.senderPhone}`,smsText1);
-          console.log(sendResult1);
-        }
-        await client.messages.create({
-          to: `whatsapp:+91${parcel.receiverPhone}`,
-          from: "whatsapp:+15558076515",
-          contentVariables: JSON.stringify({
-            1: parcel.receiverName,
-            2: parcel.senderName,
-            3: `mobile/incoming/${parcel._id}/qr`,
-            4: `dir/?api=1&destination=${parcel.lockerLat},${parcel.lockerLng}`,
-          }),
-        });
+    //     // notifications
+    //     if (parcel.store_self) {
+    //       await client.messages.create({
+    //         to: `whatsapp:+91${parcel.senderPhone}`,
+    //         from: "whatsapp:+15558076515",
+    //         contentSid: "HXa7a69894f9567b90c1cacab6827ff46c",
+    //         contentVariables: JSON.stringify({
+    //           1: parcel.senderName,
+    //           2: `mobile/incoming/${parcel._id}/qr`,
+    //         }),
+    //       });
+    //       const smsText1 = `Item successfully dropped at Locker ${locker.lockerId}. Pickup code: ${parcel.accessCode}. Share this securely. Receiver can also access via ${`https://demo.droppoint.in/qr?parcelid=${parcel.customId}`} - DROPPOINT`;
+    //       const sendResult1 = sendSMS(`91${parcel.senderPhone}`,smsText1);
+    //       console.log(sendResult1);
+    //     }
+    //     await client.messages.create({
+    //       to: `whatsapp:+91${parcel.receiverPhone}`,
+    //       from: "whatsapp:+15558076515",
+    //       contentVariables: JSON.stringify({
+    //         1: parcel.receiverName,
+    //         2: parcel.senderName,
+    //         3: `mobile/incoming/${parcel._id}/qr`,
+    //         4: `dir/?api=1&destination=${parcel.lockerLat},${parcel.lockerLng}`,
+    //       }),
+    //     });
 
-        io.emit("parcelUpdated", {
-          parcelId: parcel._id,
-          status: parcel.status,
-          lockerId: parcel.lockerId,
-          compartmentId: parseInt(parcel.compartmentId) + 1,
-          droppedAt: parcel.droppedAt,
-        });
+    //     io.emit("parcelUpdated", {
+    //       parcelId: parcel._id,
+    //       status: parcel.status,
+    //       lockerId: parcel.lockerId,
+    //       compartmentId: parseInt(parcel.compartmentId) + 1,
+    //       droppedAt: parcel.droppedAt,
+    //     });
 
-        return res.json({
-          success: true,
-          message: `Parcel dropped. Compartment ${compartment.compartmentId} is unlocked for loading.`,
-          compartmentId: parseInt(parcel.compartmentId) + 1,
-          lockerId: locker._id,
-          status: parcel.status,
+    //     return res.json({
+    //       success: true,
+    //       message: `Parcel dropped. Compartment ${compartment.compartmentId} is unlocked for loading.`,
+    //       compartmentId: parseInt(parcel.compartmentId) + 1,
+    //       lockerId: locker._id,
+    //       status: parcel.status,
+    //     });
+    //   }
+
+
+
+
+function calculateOverstayCharge(parcel) {
+  if (!parcel.billing?.isChargeable) return 0;
+
+  const now = new Date();
+  const last = parcel.billing.lastCalculatedAt || parcel.service.overstayStartedAt;
+  if (!last) return 0;
+
+  const diffMs = now - last;
+  if (diffMs <= 0) return 0;
+
+  const hours = Math.ceil(diffMs / (1000 * 60 * 60));
+  const amount = hours * parcel.billing.ratePerHour;
+
+  parcel.billing.amountAccrued += amount;
+  parcel.billing.lastCalculatedAt = now;
+
+  return parcel.billing.amountAccrued;
+}
+
+
+
+
+
+
+
+
+
+app.post("/api/locker/unlock-code", express.json(), async (req, res) => {
+  try {
+    const { accessCode } = req.body;
+
+    if (!accessCode || accessCode.length !== 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid code"
+      });
+    }
+
+    const now = new Date();
+
+    // =====================================================
+    // 1️⃣ FIRST: CHECK DROP OTP
+    // =====================================================
+const lockerWithOtp = await Locker.findOne({
+  $or: [
+    { "compartments.bookingInfo.dropOtp": accessCode },
+    { "compartments.bookingInfo.pickupOtp": accessCode }
+  ]
+});
+if (lockerWithOtp) {
+      const compartment = lockerWithOtp.compartments.find(
+        c => c.bookingInfo?.dropOtp === accessCode || c.bookingInfo?.pickupOtp === accessCode 
+      );
+
+      if (!compartment) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid drop code"
         });
       }
-      // ============= PICKUP FLOW =============
-if (parcel.status === "awaiting_pick" || parcel.status === "in_locker") {
-       // 1️⃣ Calculate price
-      const overdueHours = calculateOverdueHours(parcel.expiresAt);
-      const rate = RATE_BY_SIZE[parcel.size] || 0;
-      const amount = overdueHours * rate;
-      console.log(amount);
-      parcel.hours = overdueHours.toString();
-      if (amount > 0 && parcel.paymentStatus !== "completed") {
-      if (!parcel.razorpayOrderId) {
-      const order = await razorpay.orders.create({
-        amount: amount * 100,
-        currency: "INR",
-        receipt: `parcel_${parcel._id}`,
-        notes: {
-          parcelId: parcel._id.toString(),
-          overdueHours,
-          size: parcel.size
-        }
-      });
 
-      parcel.razorpayOrderId = order.id;
-      parcel.cost = amount;
-      parcel.paymentStatus = "pending";
+      // 🔓 Unlock hardware
+      let addr = 0x00;
+      let lockNum = parseInt(compartment.compartmentId);
+
+      if (lockNum > 11) {
+        addr = 0x01;
+        lockNum -= 12;
+      }
+
+      // const sent = await sendUnlock(lockNum, addr);
+      // if (!sent) {
+      //   return res.status(502).json({
+      //     success: false,
+      //     message: "Locker not responding"
+      //   });
+      // }
+      // Generate pickup OTP
+      if(compartment.bookingInfo.dropOtp === accessCode){
+         sendSMS(
+        `91${compartment.bookingInfo.recieverPhone}`,
+      `Dear ${compartment.bookingInfo.recieverName}, please share this code with your delivery partner to drop your parcel. Drop code : ${compartment.bookingInfo.dropOtp}. -DROPPOINT`
+      );
+
+      const pickupOtp = generatenewOtp();
+      compartment.bookingInfo.pickupOtp = pickupOtp;
+      compartment.bookingInfo.dropOtp = null;
+      compartment.bookingInfo.dropOtpUsed = true;
+
+      await lockerWithOtp.save();
+        sendSMS(
+        `91${compartment.bookingInfo.recieverPhone}`,
+      `Dear ${compartment.bookingInfo.recieverName}, your parcel has been dropped securely at the locker. Please pick it up using this code : ${compartment.bookingInfo.pickupOtp}. -DROPPOINT`
+      );
+            return res.json({
+        success: true,
+        type: "drop",
+        message: "Locker opened for drop"
+      });
+    }
+    else if (compartment.bookingInfo.pickupOtp === accessCode) {
+
+  // ✅ CLEAR BOOKING
+  compartment.bookingInfo.pickupOtp = null;
+  compartment.bookingInfo.dropOtp = null;
+  compartment.bookingInfo.dropOtpUsed = false;
+  compartment.bookingInfo.recieverName = null;
+  compartment.bookingInfo.recieverPhone = null;
+
+  compartment.isBooked = false;
+  compartment.currentParcelId = null;
+
+  // 🔥 IMPORTANT: tell mongoose this changed
+  lockerWithOtp.markModified("compartments");
+  await lockerWithOtp.save();
+
+  return res.json({
+    success: true,
+    type: "pickup",
+    message: "Parcel picked up successfully"
+  });
+}
+
+}
+
+
+
+
+
+    // =====================================================
+    // 2️⃣ ELSE → CHECK PICKUP ACCESS CODE
+    // =====================================================
+    const parcel = await Parcel2.findOne({ accessCode });
+
+    if (!parcel) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid code"
+      });
+    }
+
+    if (["picked", "closed_no_charge"].includes(parcel.status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Parcel already closed"
+      });
+    }
+
+    const locker = await Locker.findOne({ lockerId: parcel.lockerId });
+    if (!locker) {
+      return res.status(404).json({
+        success: false,
+        message: "Locker not found"
+      });
+    }
+
+    const compartment = locker.compartments.find(
+      c => c.compartmentId === parcel.compartmentId
+    );
+
+    if (
+      !compartment ||
+      compartment.currentParcelId?.toString() !== parcel.customId.toString()
+    ) {
+      await Parcel2.updateOne(
+        { _id: parcel._id },
+        {
+          $set: {
+            status: "closed_no_charge",
+            "billing.isChargeable": false
+          }
+        }
+      );
+
+      return res.status(410).json({
+        success: false,
+        message: "Parcel reassigned"
+      });
+    }
+
+    // ⏱ Overstay logic
+    if (parcel.expiresAt < now && parcel.status !== "overstay") {
+      parcel.status = "overstay";
+      parcel.billing.isChargeable = true;
       await parcel.save();
     }
 
- return res.json({
-  success: false,
-  paymentRequired: true,
-  paymentPage: `/pay/${parcel._id}`,
-  amount,
-  hours: overdueHours
+    if (parcel.status === "overstay") {
+      let amount = parcel.billing.amountAccrued || 0;
+
+      if (!amount) {
+        const diff = now - parcel.expiresAt;
+        const hours = Math.ceil(diff / (1000 * 60 * 60));
+        const rate = RATE_BY_SIZE[parcel.size];
+        amount = hours * rate;
+
+        await Parcel2.updateOne(
+          { _id: parcel._id },
+          { $set: { "billing.amountAccrued": amount } }
+        );
+      }
+
+      return res.status(402).json({
+        success: false,
+        paymentRequired: true,
+        amount,
+        paymentPage: `/pay/${parcel.customId}`
+      });
+    }
+
+    // 🔓 Unlock locker
+    let addr = 0x00;
+    let lockNum = parseInt(compartment.compartmentId);
+
+    if (lockNum > 11) {
+      addr = 0x01;
+      lockNum -= 12;
+    }
+
+    // const sent = await sendUnlock(lockNum, addr);
+    // if (!sent) {
+    //   return res.status(502).json({
+    //     success: false,
+    //     message: "Unlock failed"
+    //   });
+    // }
+
+    compartment.isBooked = false;
+    compartment.currentParcelId = null;
+    await locker.save();
+
+    await Parcel2.updateOne(
+      { _id: parcel._id },
+      {
+        $set: {
+          status: "picked",
+          pickedUpAt: new Date(),
+          "billing.isChargeable": false
+        }
+      }
+    );
+
+    return res.json({
+      success: true,
+      type: "pickup",
+      message: "Locker unlocked successfully"
+    });
+
+  } catch (err) {
+    console.error("UNLOCK ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
 });
 
-  }
-  const locker = await Locker.findOne({ lockerId: parcel.lockerId });
-  if (!locker) {
-          return res
-            .status(404)
-            .json({ success: false, message: "Locker not found." });
-        }
 
-        const compartment = locker.compartments.find(
-          (c) => c.compartmentId === parcel.compartmentId
-        );
-        if (!compartment) {
-          return res
-            .status(404)
-            .json({ success: false, message: "Compartment not found." });
-        }
-        
-        
-        // map to controller address + index (0..11)
-        let addr1 = 0x00;
-        let lockNum1 = parseInt(compartment.compartmentId);
-        if (lockNum1 > 11) {
-          addr1 = 0x01;
-          lockNum1 = lockNum1 - 12;
-        }
+////  PAY FOR OVERSTAY
 
-        // 1) send unlock
-        const sent = await sendUnlock(lockNum1, addr1);
-        if (!sent) {
-          console.warn(
-            `❌ Failed to send unlock packet to locker ${compartment.compartmentId}`
-          );
-          return res
-            .status(502)
-            .json({ success: false, message: "Failed to send unlock packet." });
-        }
+app.get("/pay/:parcelId", async (req, res) => {
+  try {
+    const { parcelId } = req.params;
 
-        // 2) verify unlocked
-        await wait(500);
-        const status = await checkLockerStatus(addr1, lockNum1, 2000);
-        if (status !== "Unlocked") {
-          return res.status(504).json({
-            success: false,
-            message: "Compartment did not unlock (timeout or still locked).",
-            details: {
-              addr: addr1,
-              lockNum: lockNum1,
-              reported: status || null,
-            },
-          });
-        }
-
-        // 3) update DB ONLY NOW (after verified unlocked)
-       
-        compartment.isBooked = false;
-        compartment.currentParcelId = null;
-        await locker.save();
-
-        parcel.status = "picked";
-        parcel.pickedUpAt = new Date();
-        await parcel.save();
-
-        await client.messages.create({
-          to: `whatsapp:+91${parcel.senderPhone}`,
-          from: "whatsapp:+15558076515",
-          contentSid: "HX5d9cb78910c37088fb14e660af060c1b",
-          contentVariables: JSON.stringify({
-            1: "User",
-            2: "you ",
-          }),
-        });
-
-        
-
-        io.emit("parcelUpdated", {
-          parcelId: parcel._id,
-          status: parcel.status,
-          lockerId: parcel.lockerId,
-          compartmentId: parseInt(parcel.compartmentId) + 1,
-          pickedUpAt: parcel.pickedUpAt,
-        });
-
-        return res.json({
-          success: true,
-          message: `Parcel picked up. Compartment ${compartment.compartmentId} unlocked.`,
-          compartmentId: parseInt(parcel.compartmentId) + 1,
-          lockerId: locker._id,
-          status: parcel.status,
-        });
-      }
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: `Parcel in status: ${parcel.status}`,
-        });
-    } catch (err) {
-      console.error("❌ Unlock API Error:", err);
-      res.status(500).json({ success: false, message: "Server error." });
+    // 🔍 Find parcel (using customId as you want)
+    const parcel = await Parcel2.findOne({ customId: parcelId });
+    if (!parcel) {
+      return res.status(404).send("Parcel not found");
     }
+
+    // 🎯 Render payment page
+    res.render("pay", {
+      parcel,
+      razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+      amount : parcel.billing.amountAccrued
+    });
+
+  } catch (err) {
+    console.error("Payment page error:", err);
+    res.status(500).send("ERROR OCCURRED. PLEASE TRY LATER");
   }
-);
+});
+
+
+
+app.post("/api/payment/create-order", async (req, res) => {
+  try {
+    const { parcelId } = req.body;
+
+    const parcel = await Parcel2.findOne({ customId: parcelId });
+    if (!parcel) {
+      return res.json({ success: false, message: "Parcel not found" });
+    }
+
+    const amount = Math.round(parcel.billing.amountAccrued * 100); // paise
+
+    const order = await razorpay.orders.create({
+      amount,
+      currency: "INR",
+      receipt: parcel.customId,
+      notes: {
+        parcelId: parcel.customId
+      }
+    });
+
+    // Save orderId for verification
+    parcel.billing.razorpayOrderId = order.id;
+    await parcel.save();
+
+    res.json({
+      success: true,
+      orderId: order.id,
+      amount
+    });
+  } catch (err) {
+    console.error("Create order error:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
+
+
+app.post("/api/payment/verify", async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      parcelId
+    } = req.body;
+
+    const parcel = await Parcel2.findOne({ customId: parcelId });
+    if (!parcel) {
+      return res.json({ success: false });
+    }
+
+    // 🔐 Verify signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.json({ success: false });
+    }
+
+    // ✅ Mark payment success
+   
+  
+
+   const locker = await Locker.findOne({ lockerId: parcel.lockerId });
+
+       const compartment = locker.compartments.find(c => c.compartmentId === parcel.compartmentId);
+      let addr = 0x00;
+      let lockNum = parseInt(compartment.compartmentId);
+      if (lockNum > 11) {
+        addr = 0x01;
+        lockNum -= 12;
+      }
+
+      const sent = await sendUnlock(lockNum, addr);
+      if (!sent) {
+        return res.status(502).json({ success: false, message: "Unlock failed" });
+      }
+
+      await wait(500);
+      const hwStatus = await checkLockerStatus(addr, lockNum, 2000);
+      if (hwStatus !== "Unlocked") {
+        return res.status(504).json({ success: false, message: "Unlock timeout" });
+      }
+      compartment.isBooked = false;
+      compartment.currentParcelId = null;
+      await locker.save();
+  parcel.status = "picked_with_overstay";
+    await parcel.save();
+
+    res.json({
+      success: true,
+      redirect: "/",
+    });
+  } catch (err) {
+    console.error("Verify error:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
+
+
+
+
+
+
 
 app.post("/api/payment/razorpay/webhook", express.json(), async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -1101,10 +1484,39 @@ app.post("/api/payment/verify", express.json(), async (req, res) => {
   if (expected !== razorpay_signature) {
     return res.status(400).json({ success: false });
   }
+ const locker = await Locker.findOne({ lockerId: parcel.lockerId });
+      const compartment = locker.compartments.find(
+        c => c.compartmentId === parcel.compartmentId
+      );
+
+   let addr = 0x00;
+      let lockNum = parseInt(compartment.compartmentId);
+      if (lockNum > 11) {
+        addr = 0x01;
+        lockNum -= 12;
+      }
+
+      const sent = await sendUnlock(lockNum, addr);
+      if (!sent) {
+        return res.status(502).json({ success: false, message: "Unlock failed" });
+      }
+
+            await wait(500);
+      const hwStatus = await checkLockerStatus(addr, lockNum, 2000);
+      if (hwStatus !== "Unlocked") {
+        return res.json({ success: false, message: "Unlock timeout" });
+      }
+
+
+
 
   parcel.paymentStatus = "completed";
   parcel.razorpayPaymentId = razorpay_payment_id;
   await parcel.save();
+
+    compartment.isBooked = false;
+    compartment.currentParcelId = null;
+    await locker.save();
 
   res.json({ success: true });
 });
@@ -1195,7 +1607,7 @@ const otpMeta = new Map(); // phone -> { resendAvailableAt, attempts, lockUntil 
 
 // config
 const RESEND_COOLDOWN_MS = 30 * 1000; // 30s between resends
-const MAX_ATTEMPTS = 5; // attempts before temporary lock
+const MAX_ATTEMPTS = 10; // attempts before temporary lock
 const ATTEMPT_LOCK_MS = 5 * 60 * 1000; // 5 minutes lock after too many attempts
 
 // helper to compute seconds left for resend
@@ -1316,14 +1728,7 @@ app.post("/terminal/verify-otp", async (req, res) => {
     const meta = otpMeta.get(phone) || {};
 
     // check temporary lock
-    if (meta.lockUntil && Date.now() < meta.lockUntil) {
-      const wait = secondsLeft(meta.lockUntil);
-      return res.render("terminal_verify", {
-        phone,
-        error: `Too many failed attempts. Try again in ${wait}s.`,
-        resendWait: secondsLeft(meta.resendAvailableAt),
-      });
-    }
+
 
     // call Twilio verify check
 
@@ -1407,17 +1812,6 @@ app.post("/send-otp/whatsapp", async (req, res) => {
 
     // check cooldown
     const meta = otpMeta.get(phone) || {};
-    if (meta.resendAvailableAt && Date.now() < meta.resendAvailableAt) {
-      const wait = secondsLeft(meta.resendAvailableAt);
-      // Redirect to verify page with an error message (stays on the verify page)
-      return res.redirect(
-        `/terminal/verify?phone=${encodeURIComponent(
-          phone
-        )}&error=${encodeURIComponent(
-          "Please wait " + wait + "s before requesting a new code"
-        )}`
-      );
-    }
 
     // request Twilio Verify to send code (if configured)
     try {
@@ -1465,6 +1859,9 @@ app.post("/send-otp/whatsapp", async (req, res) => {
 // GET /terminal/verify
 // Render verify page and pass resendWait + optional messages
 // -----------------------------------------
+
+
+
 app.get("/terminal/whatsapp/verify", (req, res) => {
   const phone = (req.query.phone || "").trim();
   if (!phone) return res.status(400).send("Missing phone");
@@ -1597,7 +1994,10 @@ app.get("/site/dropoff", async(req, res) => {
     for (const c of locker.compartments) {
       if (!sizes.includes(c.size)) continue;
       availability[c.size].total += 1;
-      if (!c.isBooked) availability[c.size].free += 1; // free if NOT booked
+     if (!c.isBooked || (c.isBooked && c.isOverstay)) {
+  availability[c.size].free += 1;
+}
+ // free if NOT booked
     }
 
     // (Optional) total rates you use on the page
@@ -1610,48 +2010,73 @@ app.get("/site/dropoff", async(req, res) => {
 app.post("/terminal/dropoff", async (req, res) => {
   try {
     const { size, hours, phone } = req.body;
+
     const PRICES = { small: 5, medium: 10, large: 20 };
 
-    if (!size || !PRICES[size]) return res.status(400).send("Invalid size");
-    const hrs = parseInt(hours, 10);
-    if (!hrs || hrs < 1 || hrs > 72)
+    if (!PRICES[size]) return res.status(400).send("Invalid size");
+
+    const hrs = Number(hours);
+    if (!Number.isInteger(hrs) || hrs < 1 || hrs > 72)
       return res.status(400).send("Invalid hours");
 
-    if (!phone) return res.status(400).send("Phone required");
+    if (!/^[6-9]\d{9}$/.test(phone))
+      return res.status(400).send("Invalid phone number");
 
-    const pricePerHour = PRICES[size];
-    const total = pricePerHour * hrs;
+    const total = PRICES[size] * hrs;
+  //   const upiQrString =
+  // `upi://pay?pa=dropp44856.ibz@icici&pn=DropPoint&am=${total}&cu=INR&tn=Locker%20Drop`;
+
+    // Generate unique customId
+    let customId;
+    do {
+      customId = "P" + Math.random().toString(36).substring(2, 9).toUpperCase();
+    } while (await Parcel2.exists({ customId }));
+
     const createdAt = new Date();
-    const expiresAt = new Date(createdAt.getTime() + hrs * 60 * 60 * 1000);
-    const customId = `PCL-${Date.now()}-${Math.floor(
-      1000 + Math.random() * 9000
-    )}`;
-    const terminal_store = true;
-    const accessCode = Math.floor(100000 + Math.random() * 900000).toString();
-    // Create Parcel object
-    const parcelData = {
-      senderPhone: phone,
-      receiverPhone: phone, // change if receiver is different
-      size,
-      terminal_store,
-      hours: String(hrs),
-      accessCode: accessCode, // short unique access code
-      customId: customId,
-      cost: mongoose.Types.Decimal128.fromString(total.toString()),
-      expiresAt,
-      createdAt,
-    };
+    const expiresAt = new Date(createdAt.getTime() + hrs * 3600000);
 
-    // Save parcel
-    const parcel = new Parcel2(parcelData);
+    const parcel = await Parcel2.create({
+      senderPhone: phone,
+      receiverPhone: phone,
+      size,
+      hours: hrs,
+      terminal_store: true,
+      accessCode: Math.floor(100000 + Math.random() * 900000).toString(),
+      customId,
+      cost: total,
+      createdAt,
+      expiresAt,
+      status: "awaiting_payment"
+    });
+
+    const order = await razorpay.orders.create({
+      amount: total * 100,
+      currency: "INR",
+      receipt: parcel.customId,
+      notes: {
+        parcelId: parcel._id.toString(),
+        phone
+      }
+    });
+
+    parcel.razorpayOrderId = order.id;
     await parcel.save();
 
-    return res.redirect(`/terminal/parcel/${parcel._id}`);
+   res.render("payment1", {
+  parcel,
+  order,
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+  amount: total * 100,
+ // ✅ IMPORTANT
+});
+
+
   } catch (err) {
     console.error("dropoff error:", err);
-    return res.status(500).send("Server error");
+    res.status(500).send("Server error");
   }
 });
+
 app.get("/terminal/parcel/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -1733,7 +2158,7 @@ app.post("/terminal/razorpay/create-order", async (req, res) => {
 });
 
 // VERIFY
-app.post("/terminal/razorpay/verify", async (req, res) => {
+app.post("/terminal/payment/verify", async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, parcelId } = req.body;
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !parcelId)
@@ -1886,6 +2311,50 @@ async function accessHandler(req, res) {
     const locker = await Locker.findOne({ lockerId });
     if (!locker) return res.status(404).send("Locker not found.");
 
+
+  const now = new Date();
+
+// 🔍 Scan booked compartments for overstayed parcels
+for (const c of locker.compartments) {
+  if (!c.isBooked || !c.currentParcelId) continue;
+
+  const oldParcel = await Parcel2.findOne({ customId: c.currentParcelId });
+
+  if (!oldParcel) {
+    // Corrupt state → free it
+    c.isBooked = false;
+    c.currentParcelId = null;
+    continue;
+  }
+
+  // ⏰ OVERSTAY DETECTED
+  if (oldParcel.expiresAt && oldParcel.expiresAt < now) {
+    console.log(`⚠️ Overstayed parcel found: ${oldParcel.customId}`);
+
+    // 📢 Notify receiver
+    try {
+      await client.messages.create({
+        to: `whatsapp:+91${oldParcel.receiverPhone}`,
+        from: 'whatsapp:+15558076515',
+        contentSid: 'HXaf300dc862c5bf433a99649bf553a34e',
+        contentVariables: JSON.stringify({
+          2: oldParcel.customId
+        })
+      });
+    } catch (err) {
+      console.error("❌ Overstay WhatsApp failed:", err.message);
+    }
+
+    // 📦 Update old parcel
+    oldParcel.status = "expired";
+    await oldParcel.save();
+
+    // 🧹 FREE THE COMPARTMENT
+    c.isBooked = false;
+    c.currentParcelId = null;
+  }
+}
+
     // pick or reuse a compartment
     let compartment =
       locker.compartments.find(c => c.compartmentId === parcel.compartmentId) ||
@@ -1894,29 +2363,29 @@ async function accessHandler(req, res) {
     if (!compartment) {
       return res.status(400).send("No available compartments in this locker.");
     }
-
+    console.log(compartment.compartmentId);
     // map to (addr, lock num)
     let addr = 0x00;
     let lockNum = parseInt(compartment.compartmentId, 10);
     if (lockNum > 11) { addr = 0x01; lockNum = lockNum - 12; }
-
+    console.log(lockNum);
     // try unlock
-    const unlocked = await unlockWithRetry(lockNum, addr, { attempts: 5, firstDelayMs: 450, stepMs: 250 });
+    // const unlocked = await unlockWithRetry(lockNum, addr, { attempts: 5, firstDelayMs: 450, stepMs: 250 });
 
-    if (!unlocked) {
-      // Render retry page with a button that POSTs to the same endpoint
-      return res.render("terminal_unlock_retry", {
-        parcelId: parcel._id,
-        lockerId,
-        message: "The locker did not open automatically.",
-        hint: "Please try again."
-      });
-    }
+    // if (!unlocked) {
+    //   // Render retry page with a button that POSTs to the same endpoint
+    //   return res.render("terminal_unlock_retry", {
+    //     parcelId: parcel._id,
+    //     lockerId,
+    //     message: "The locker did not open automatically.",
+    //     hint: "Please try again."
+    //   });
+    // }
 
     // ✅ only update DB after verified unlocked              // door is open
     compartment.isBooked = true;                // reserved for this parcel
-    compartment.currentParcelId = parcel._id;
-    await locker.save();
+    
+    
     let customId;
     let exists = true;
 
@@ -1925,7 +2394,9 @@ async function accessHandler(req, res) {
     exists = await Parcel2.exists({ customId });
   }
 
+
     parcel.customId = customId;
+    parcel.billing.ratePerHour = parcel.cost.toString();
     parcel.status = "awaiting_pick";
     parcel.lockerLat = locker.location.lat;
     parcel.lockerLng = locker.location.lng;
@@ -1933,7 +2404,8 @@ async function accessHandler(req, res) {
     parcel.compartmentId = compartment.compartmentId;
     parcel.UsercompartmentId = parseInt(compartment.compartmentId, 10) + 1;
     parcel.droppedAt = new Date();
-
+compartment.currentParcelId = parcel.customId;
+await locker.save();
     const qrImage = await QRCode.toDataURL(parcel.accessCode);
     await parcel.save();
     await client.messages.create({
@@ -1958,7 +2430,7 @@ async function accessHandler(req, res) {
       accessCode: parcel.accessCode,
       customId: parcel.customId,
       qrImage,
-      parcelId: parcel._id
+      parcelId: parcel.customId
     });
   } catch (err) {
     console.error("parcel access error:", err);
@@ -1988,7 +2460,7 @@ app.get("/mobile/incoming/:id/qr", async (req, res) => {
 function startUnlockCron() {
   cron.schedule("*/2 * * * * *", async () => {
     try {
-      const locker = await Locker.findOne({ lockerId: "L02" });
+      const locker = await Locker.findOne({ lockerId: "L00002" });
       if (!locker) return console.log("Locker not found");
 
       for (const compartment of locker.compartments) {
@@ -2012,7 +2484,7 @@ function startUnlockCron() {
           if (status === "Unlocked") {
             await Locker.updateOne(
               {
-                lockerId: "L02",
+                lockerId: "L00002",
                 "compartments.compartmentId": compartment.compartmentId,
               },
               { $set: { "compartments.$.isLocked": true } }
@@ -2110,6 +2582,416 @@ function startTerminalHealthCron() {
     `[terminal-cron] started for ${TERMINAL_ID} schedule=${SCHEDULE}`
   );
 }
+
+app.get("/terminal/drop-otp", async(req,res)=>{
+  res.render("drop-otp",{
+    error: null,
+    success: null
+  });
+})
+
+function generatenewOtp() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+
+
+
+
+app.post("/terminal/drop-otp/verify", async (req, res) => {
+  try {
+    const { otp } = req.body;
+    console.log(otp);
+    console.log(typeof(otp));
+    if (otp.length !== 6) {
+      return res.render("drop-otp", {
+        success: null,
+        error: "Invalid drop code. Please enter 6 digits."
+      });
+    }
+
+    // 🔍 Find locker containing this OTP
+   const locker = await Locker.findOne({ lockerId: "L00002" });
+
+
+    if (!locker) {
+      return res.render("drop-otp", {
+        success: null,
+        error: "Locker not found."
+      });
+    }
+
+    // 🔍 Find matching compartment
+const compartment = locker.compartments.find(c =>
+  c.bookingInfo &&
+  typeof c.bookingInfo.dropOtp === "string" &&
+  c.bookingInfo.dropOtp === otp
+);
+
+    if (!compartment) {
+      return res.render("drop-otp", {
+        success: null,
+        error: "Incorrect drop code. Please try again."
+      });
+    }
+    //⏱ Expiry check
+    // if (
+    //   !compartment.bookingInfo.dropOtpExpiresAt ||
+    //   new Date() > compartment.bookingInfo.dropOtpExpiresAt
+    // ) {
+    //   return res.status(401).json({
+    //     ok: false,
+    //     message: "OTP expired"
+    //   });
+    // }
+
+    // 🔐 One-time check
+    // if (compartment.bookingInfo.dropOtpUsed) {
+    //   return res.status(401).json({
+    //     ok: false,
+    //     message: "OTP already used"
+    //   });
+    // }
+      let addr1 = 0x00;
+      let lockNum1 = parseInt(compartment.compartmentId);
+
+      if (lockNum1 > 11) {
+        addr1 = 0x01; // second BU
+        lockNum1 = lockNum1 - 12; // reset to 0–11 range
+      }
+      const sent = await sendUnlock(lockNum1, addr1);
+    if (!sent) {
+      return res.render("drop-otp", {
+        success: null,
+        error: "Locker not responding. Please try again."
+      });
+    }
+
+    const newOtp =  generatenewOtp();
+    console.log(newOtp);
+    compartment.bookingInfo.pickupOtp = newOtp;
+    compartment.bookingInfo.dropOtp = null;
+    // ✅ MARK OTP AS USED
+    compartment.bookingInfo.dropOtpUsed = true;
+
+    // 🔓 UNLOCK COMPARTMENT
+    compartment.isLocked = false;
+
+    await locker.save();
+
+const smsText4 = `Dear ${compartment.bookingInfo.recieverName}, your parcel has been dropped securely at the locker. Please pick it up using this code : ${compartment.bookingInfo.pickupOtp}. -DROPPOINT`;
+    const sendResult4 = sendSMS(`91${compartment.bookingInfo.recieverPhone}`,smsText4);
+    console.log(sendResult4);
+    
+    
+
+
+
+return res.render("drop-otp", {
+  error : null,
+  success: "Locker opened successfully"
+});
+
+
+  } catch (err) {
+    console.error("Drop OTP verify error:", err);
+    return res.render("drop-otp", {
+      success: null,
+      error: "Something went wrong. Please try again."
+    })
+  };
+});
+app.get("/customer/pickup",async(req,res)=>{
+  res.render("pickup-customer",{
+    success : null,
+    error : null
+  });
+})
+
+
+
+
+
+
+
+app.post("/terminal/pick-otp/verify", async (req, res) => {
+  try {
+    const { otp } = req.body;
+
+    if (otp.length !== 6) {
+      return res.render("pickup-customer", {
+        success: null,
+        error: "Invalid drop code. Please enter 6 digits."
+      });
+    }
+
+
+    // 🔍 Find locker (you can make this dynamic later)
+    const locker = await Locker.findOne({ lockerId: "L00002" });
+
+  if (!locker) {
+      return res.render("pickup-customer", {
+        success: null,
+        error: "Locker not found."
+      });
+    }
+
+    // 🔍 Find matching compartment by PICKUP OTP
+    const compartment = locker.compartments.find(c =>
+      c.bookingInfo &&
+      c.bookingInfo.pickupOtp === otp
+    );
+
+    if (!compartment) {
+      return res.render("pickup-customer", {
+        success: null,
+        error: "Incorrect drop code. Please try again."
+      });
+    }
+
+    // ⏱ Expiry check (optional but recommended)
+    // if (
+    //   compartment.bookingInfo.pickOtpExpiresAt &&
+    //   new Date() > compartment.bookingInfo.pickOtpExpiresAt
+    // ) {
+    //   return res.status(401).json({
+    //     ok: false,
+    //     message: "OTP expired"
+    //   });
+    // }
+
+    // // 🔐 One-time check
+    if (compartment.bookingInfo.pickOtpUsed) {
+      return res.status(401).json({
+        ok: false,
+        message: "OTP already used"
+      });
+    }
+
+    // 🔓 HARDWARE UNLOCK LOGIC
+    let addr1 = 0x00;
+    let lockNum1 = parseInt(compartment.compartmentId);
+
+    if (lockNum1 > 11) {
+      addr1 = 0x01;       // second BU
+      lockNum1 -= 12;     // normalize to 0–11
+    }
+
+    const sent = await sendUnlock(lockNum1, addr1);
+
+    if (!sent) {
+      return res.render("pickup-customer", {
+        success: null,
+        error: "Locker not responding. Please try again."
+      });
+    }
+
+    // ✅ MARK OTP USED (for safety)
+    compartment.bookingInfo.pickOtpUsed = true;
+
+    // 🔥 CLEAR BOOKING INFO AFTER SUCCESSFUL PICKUP
+    compartment.bookingInfo = {
+      userId: null,
+      bookingTime: null,
+      otp: null,
+      receiverName: null,
+      receiverPhone: null,
+      pickupOtp: null,
+      dropOtpExpiresAt: null,
+      dropOtpUsed: false,
+    recieverName : null ,
+    recieverPhone : null
+    };
+
+    // 🔄 RESET COMPARTMENT STATE
+    compartment.isBooked = false;
+    compartment.isLocked = false;
+    compartment.currentParcelId = null;
+    compartment.qrCode = null;
+
+    await locker.save();
+
+return res.render("pickup-customer", {
+  error : null,
+  success: "Locker opened successfully"
+});
+
+  } catch (err) {
+    console.error("pickup OTP verify error:", err);
+    return res.render("pickup-customer", {
+      success: null,
+      error: "Something went wrong. Please try again."
+    })
+  };
+});
+
+
+
+
+///// OTP share this otp only if youre expecting a parcel
+
+////// DELIVERY GUY ON DEMAND OTP
+
+
+/* ============================
+   PAGE RENDERS
+============================ */
+
+app.get("/kiosk/phone", (req, res) => {
+  res.render("kiosk/phone");
+});
+
+app.get("/kiosk/otp", (req, res) => {
+  if (!req.session.pickupOtpSession) return res.redirect("/kiosk/phone");
+  res.render("kiosk/otp", { phone: req.session.pickupOtpSession.phone });
+});
+
+
+
+app.get("/kiosk/unlocking", (req, res) => {
+  res.render("kiosk/unlocking");
+});
+
+/* ============================
+   API: SEND OTP
+============================ */
+app.post("/api/kiosk/send-otp", (req, res) => {
+  const { phone } = req.body;
+
+  if (!phone || phone.length !== 10) {
+    return res.status(400).json({ success: false });
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  req.session.pickupOtpSession = {
+    phone,
+    otp,
+    expiresAt: Date.now() + 5 * 60 * 1000
+  };
+
+  console.log(otp, "Share this otp only if you are expecting a parcel"); // replace with SMS
+
+  res.json({ success: true });
+});
+
+/* ============================
+   API: VERIFY OTP
+============================ */
+app.post("/api/kiosk/verify-otp", (req, res) => {
+  const { otp } = req.body;
+  const session = req.session.pickupOtpSession;
+
+  if (
+    !session ||
+    session.expiresAt < Date.now() ||
+    session.otp !== otp
+  ) {
+    return res.status(400).json({ success: false });
+  }
+
+  req.session.courierVerified = {
+    phone: session.phone,
+    verifiedAt: Date.now()
+  };
+
+  delete req.session.pickupOtpSession;
+  res.json({ success: true });
+});
+
+/* ============================
+   API: AVAILABLE SIZES
+============================ */
+app.get("/kiosk/size", async (req, res) => {
+  if (!req.session.courierVerified) {
+    return res.status(401).json({});
+  }
+
+  const locker = await Locker.findOne({
+   lockerId : lockerID
+  });
+
+  const sizes = ["small", "medium", "large"];
+    const availability = { small: { total: 0, free: 0 }, medium: { total: 0, free: 0 }, large: { total: 0, free: 0 } };
+
+    for (const c of locker.compartments) {
+      if (!sizes.includes(c.size)) continue;
+      availability[c.size].total += 1;
+      if (!c.isBooked) availability[c.size].free += 1; // free if NOT booked
+    }
+
+    // (Optional) total rates you use on the page
+    const PRICE = { small: 5, medium: 10, large: 20 };
+  // Render the dropoff page and give it the verified phone to prefill the form
+  res.render("kiosk/size", {availability,
+      PRICE });
+});
+
+
+
+
+
+
+
+
+
+/* ============================
+   API: UNLOCK BY SIZE
+============================ */
+app.post("/api/kiosk/unlock", async (req, res) => {
+  const { size } = req.body;
+  const courier = req.session.courierVerified;
+
+  if (!courier) return res.status(401).json({ success: false });
+
+  const locker = await Locker.findOne({
+    lockerId : "L00004"
+  });
+  console.log(locker);
+  if (!locker) {
+    return res.status(400).json({ success: false });
+  }
+
+  const compartment = locker.compartments.find(
+    c => !c.isBooked && c.size === size
+  );
+  console.log(compartment.compartmentId);
+  compartment.isBooked = true;
+  compartment.isLocked = false;
+  compartment.bookingInfo.pickupOtp =
+    Math.floor(100000 + Math.random() * 900000).toString();
+  compartment.bookingInfo.pickupOtpUsed = false;
+  compartment.bookingInfo.recieverPhone = courier.phone;
+  compartment.bookingInfo.bookingTime = new Date();
+
+  await locker.save();
+
+  await unlockHardware(locker.lockerId, compartment.compartmentId);
+
+  req.session.destroy();
+
+  res.json({
+    success: true,
+    lockerId: locker.lockerId,
+    compartmentId: compartment.compartmentId
+  });
+});
+
+/* ============================
+   HARDWARE STUB
+============================ */
+async function unlockHardware(lockerId, compartmentId) {
+  console.log(`🔓 Unlocking ${lockerId} → ${compartmentId}`);
+  // your TCP / relay logic here
+}
+
+
+
+
+
+
+
+
 
 
 async function bootstrap() {

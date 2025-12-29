@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pay & Unlock</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <!-- Razorpay -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    :root{
+      --orange:#ff7b00;
+      --orange-dark:#e56e00;
+      --bg:#ffffff;
+      --border:#e9e9ee;
+      --text:#111;
+      --muted:#666;
+      --radius:20px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html, body{
+      height:100%;
+      margin:0;
+      user-select:none;
+      touch-action:manipulation;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+
+    .card{
+      width:100%;
+      max-width:460px;
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:32px;
+      box-shadow:0 20px 40px rgba(0,0,0,0.08);
+      text-align:center;
+    }
+
+    .title{
+      font-size:26px;
+      font-weight:800;
+      margin-bottom:6px;
+    }
+
+    .subtitle{
+      color:var(--muted);
+      margin-bottom:24px;
+    }
+
+    .info{
+      background:#fafafa;
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:16px;
+      margin-bottom:24px;
+      text-align:left;
+    }
+
+    .row{
+      display:flex;
+      justify-content:space-between;
+      font-size:16px;
+      margin-bottom:10px;
+    }
+
+    .row:last-child{ margin-bottom:0; }
+
+    .amount{
+      font-size:22px;
+      font-weight:800;
+      color:var(--orange);
+    }
+
+    .btn-primary{
+      width:100%;
+      background:var(--orange);
+      color:#fff;
+      border:none;
+      padding:18px;
+      font-size:18px;
+      font-weight:800;
+      border-radius:14px;
+      cursor:pointer;
+      margin-bottom:14px;
+    }
+
+    .btn-primary:active{
+      background:var(--orange-dark);
+      transform:scale(0.98);
+    }
+
+    .btn-back{
+      width:100%;
+      background:#fff;
+      border:2px solid var(--border);
+      padding:16px;
+      font-size:16px;
+      font-weight:700;
+      border-radius:14px;
+      cursor:pointer;
+      color:var(--text);
+    }
+
+    .btn-back:active{
+      background:#f5f5f5;
+    }
+
+    /* KIOSK SAFE */
+    @media (max-height: 600px){
+      .card{ padding:24px; }
+      .title{ font-size:22px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="title">Pay & Unlock Locker</div>
+  <div class="subtitle">Complete payment to open the locker</div>
+
+  <div class="info">
+    <div class="row">
+      <span>Parcel ID</span>
+      <strong><%= parcel.customId %></strong>
+    </div>
+    <div class="row">
+      <span>Amount</span>
+      <span class="amount">₹<%= amount %></span>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="payNow()">
+    Pay & Unlock
+  </button>
+
+  <button class="btn-back" onclick="window.location.href='/'">
+    ← Back
+  </button>
+</div>
+
+<script>
+  async function payNow() {
+    const res = await fetch("/api/payment/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parcelId: "<%= parcel.customId %>"
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.message || "Payment init failed");
+      return;
+    }
+
+    const options = {
+      key: "<%= razorpayKeyId %>",
+      amount: data.amount,
+      currency: "INR",
+      name: "DropPoint",
+      description: "Locker Unlock Payment",
+      order_id: data.orderId,
+      handler: async function (response) {
+        const verifyRes = await fetch("/api/payment/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            parcelId: "<%= parcel.customId %>",
+            ...response
+          })
+        });
+
+        const verifyData = await verifyRes.json();
+
+        if (verifyData.success) {
+          alert("Payment successful! Unlocking locker...");
+          window.location.href = verifyData.redirect;
+        } else {
+          alert("Payment verification failed");
+        }
+      }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.open();
+  }
+</script>
+
+</body>
+</html>

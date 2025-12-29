@@ -128,9 +128,8 @@
   </svg>
   Back
 </button>
-    <h2>Drop-off Pricing</h2>
-    <p class="lead">Select your locker size and duration</p>
-
+    <h2>Locker Reservation</h2>
+    <p class="lead">Select your locker size and duration of reservation</p>
     <form id="pricingForm" action="/terminal/dropoff" method="post">
       <div class="size-grid" role="radiogroup" aria-label="Locker sizes">
   <!-- Small -->
@@ -176,7 +175,7 @@
 
 
       <div class="form-group">
-        <label for="hours">Select duration (hours):</label>
+        <label for="hours">Select reservation period:</label>
         <div class="hours-row">
           <input id="hours" name="hours" type="range" min="1" max="72" value="1" oninput="document.getElementById('hoursValue').textContent=this.value+' hr'+(this.value>1?'s':'')">
           <div id="hoursValue" class="hours-value">1 hr</div>
@@ -184,11 +183,12 @@
       </div>
 
       <div class="summary-box">
+        <h3 style="text-align: center;">RESERVATION SERVICE AGREEMENT</h3>
         <div class="summary-row"><span>Size</span><span id="sum-size">—</span></div>
         <div class="summary-row"><span>Rate</span><span id="sum-rate">—</span></div>
         <div class="summary-row"><span>Hours</span><span id="sum-hours">1 hr</span></div>
         <div class="summary-row total"><span>Total</span><span id="sum-total">₹0</span></div>
-        <div class="summary-row" style="font-size:0.9rem;color:var(--muted);"><span>Expires</span><span id="sum-expiry">—</span></div>
+        <div class="summary-row" style="font-size:0.9rem; font-size:xx-large; font-weight: bolder;"><span>Reserved Till :</span><span id="sum-expiry">—</span></div>
       </div>
 
       <button id="confirmBtn" class="btn-orange" type="submit" disabled>Confirm Drop-off</button>
@@ -279,17 +279,17 @@
 (function(){
   let timer;
 
-  function resetTimer() {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      window.location.href = '/';
-    }, 20000); // 20 seconds
-  }
+  // function resetTimer() {
+  //   clearTimeout(timer);
+  //   timer = setTimeout(() => {
+  //     window.location.href = '/';
+  //   }, 20000); // 20 seconds
+  // }
 
-  // Reset on any user activity
-  ['mousemove','keydown','click','touchstart'].forEach(evt =>
-    document.addEventListener(evt, resetTimer)
-  );
+  // // Reset on any user activity
+  // ['mousemove','keydown','click','touchstart'].forEach(evt =>
+  //   document.addEventListener(evt, resetTimer)
+  // );
 
   // Start immediately
   resetTimer();

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Access Terminal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #ffffff;
+  --accent: #f97316;
+  --dark: #111827;
+  --radius: 18px;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  background: var(--bg);
+  display: flex;
+}
+
+/* MAIN GRID */
+.wrapper {
+  display: grid;
+  grid-template-columns: 2fr 3fr 1fr;
+  width: 100%;
+  height: 100%;
+}
+
+/* LEFT PANEL */
+.left-panel {
+  background: #020617;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 30px;
+  padding: 40px;
+}
+
+
+.action-btn {
+ 
+  height: 120px;        /* fixed, clean height */
+  max-width: 100%;
+
+  border-radius: 20px;
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.store {
+  background: var(--accent);
+}
+
+.send {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.action-btn:hover {
+  transform: scale(1.02);
+}
+
+/* CENTER PANEL */
+.center-panel {
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.display {
+  width: 80%;
+  height: 60px;
+  background: #111827;
+  color: white;
+  border-radius: 12px;
+
+  margin-bottom: 28px;
+  padding: 0 10px;
+
+  font-size: 1.6rem;
+  text-align: center;
+  line-height: 60px;
+  letter-spacing: 4px;
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  width: 80%;
+  max-width: 360px;
+}
+
+.key {
+  
+  height: 72px;
+  border-radius: 16px;
+  background: var(--accent);
+  font-size: 2rem;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(0,0,0,.12);
+}
+
+.key:active {
+  transform: scale(0.95);
+}
+
+.enter {
+  grid-column: span 3;
+  background: rgb(189, 61, 2);
+  color: white;
+}
+
+/* RIGHT PANEL */
+.right-panel {
+  background: linear-gradient(180deg, #111827, #020617);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+
+.qr-box {
+  transform: rotate(180deg);
+  text-align: center;
+}
+
+.qr-box span {
+  display: block;
+  margin-top: 10px;
+  color: #facc15;
+}
+.arrow-box {
+  transform: rotate(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+}
+
+.arrow {
+  font-size: 5rem;
+  color: #facc15;
+  animation: slide 1.2s infinite ease-in-out;
+}
+
+.arrow-box span {
+  color: #facc15;
+  font-weight: 600;
+  letter-spacing: 2px;
+  font-size: 1rem;
+}
+
+/* Arrow movement */
+@keyframes slide {
+  0%   { transform: translateX(0); opacity: 0.4; }
+  50%  { transform: translateX(-15px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 0.4; }
+}
+
+/* Soft pulse */
+@keyframes pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+.center-panel {
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;               /* 🔥 main spacing control */
+  padding: 40px 0;
+}
+.center-panel img {
+  margin-bottom: 10px;
+}
+.center-panel h1 {
+  margin: 0 0 18px;
+  font-size: 1.6rem;
+  letter-spacing: 1px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+
+  <!-- LEFT -->
+  <div class="left-panel">
+    <button class="action-btn store">STORE</button>
+    <button class="action-btn send">SEND</button>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-panel" style="background-color: #020617;">
+    <img src="./public/uploads/droppointlogo.png" height="150px"/>
+    <h1 style="color: white;">ENTER DROP / PICKUP CODE</h1>
+    <div class="display" id="display">______</div>
+
+    <div class="keypad">
+      <button class="key">1</button>
+      <button class="key">2</button>
+      <button class="key">3</button>
+      <button class="key">4</button>
+      <button class="key">5</button>
+      <button class="key">6</button>
+      <button class="key">7</button>
+      <button class="key">8</button>
+      <button class="key">9</button>
+      <button class="key">C</button>
+      <button class="key">0</button>
+      <button class="key">⌫</button>
+      <button class="key enter">ENTER</button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+<div class="right-panel">
+  <div class="arrow-box">
+    <div class="arrow">⬇</div>
+    <span style=" font-size: 30px;"> SCAN YOUR QR HERE</span>
+  </div>
+</div>
+
+
+</div>
+
+<script>
+const display = document.getElementById("display");
+let code = "";
+
+document.querySelectorAll(".key").forEach(btn => {
+  btn.onclick = () => {
+    const val = btn.innerText;
+
+    if (val === "C") code = "";
+    else if (val === "⌫") code = code.slice(0, -1);
+    else if (val === "ENTER") alert("Entered Code: " + code);
+    else if (code.length < 6) code += val;
+
+    display.textContent = code.padEnd(6, "_");
+  };
+});
+</script>
+
+</body>
+</html>

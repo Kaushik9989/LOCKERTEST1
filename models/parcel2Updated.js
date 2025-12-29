@@ -4,13 +4,14 @@ const ParcelSchema = new mongoose.Schema({
   senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   senderName: String,
   senderPhone: String,
+
   receiverName: String,
-  receiverPhone: { type: String, required: true },
+  receiverPhone: { type: String },
 
   description: String,
   type: { type: String, enum: ["document", "package", "gift", "other"], default: "package" },
   size: { type: String, enum: ["small", "medium", "large"], required: true },
-  hours : String,
+
   location_id: { type: mongoose.Schema.Types.ObjectId, ref: "DropLocation" }, // optional for tracking region
   lockerId: { type: String },                 // Actual drop locker
   compartmentId: { type: String },
@@ -24,7 +25,7 @@ const ParcelSchema = new mongoose.Schema({
   unlockUrl: String,
 
   razorpayOrderId: String,
-  razorpayPaymentId: String,
+  razorpayQrId: String,
   cost: { type: mongoose.Decimal128, default: 0, required: true },
   paymentOption: { type: String, enum: ["sender_pays", "receiver_pays"] },
   paymentStatus: { type: String, enum: ["pending", "completed"], default: "pending" },
@@ -47,18 +48,21 @@ razorpayPaymentLink: { type: String },
 paymentStatus: { type: String, default: "pending" },
 
 
-  status: {
-    type: String,
-    enum: [
-      "awaiting_payment", // sender has not yet paid
-      "awaiting_drop",    // waiting for sender to drop the parcel
-      "awaiting_pick",    // receiver is yet to pick it up
-      "in_transit",       // being moved by courier
-      "picked",           // receiver has picked
-      "expired"           // expired in locker
-    ],
-    default: "awaiting_payment"
-  },
+status: {
+  type: String,
+  enum: [
+    "awaiting_payment",
+    "awaiting_drop",  // -> RESERVED 
+    "awaiting_pick", // 
+    "in_transit",
+    "picked",
+    "picked_with_overstay",  
+    "overstay",  /// reservation expired             // ⬅️ service expired but still held
+    "closed_no_charge",      // ⬅️ reassigned or expired
+    "expired",             // legacy / optional
+  ],
+  default: "awaiting_payment"
+},
 
   transitInfo: {
     courier: String,
@@ -78,12 +82,6 @@ paymentStatus: { type: String, default: "pending" },
     estimated_cost: Number,
     etd: String
   },
-  payment: {
-  amount: Number,
-  orderId: String,
-  paid: { type: Boolean, default: false }
-},
-
 
 
   receiverDeliveryMethod: { type: String, default: null },    // "courier" or "locker"
@@ -94,7 +92,36 @@ paymentStatus: { type: String, default: "pending" },
   droppedAt: Date,
   pickedAt: Date,
   expiresAt: { type: Date, required: true },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+
+
+  // =======================
+// EXPIRY & OVERSTAY LOGIC
+// =======================
+
+service: {
+  overstayStartedAt: { type: Date },        // when normal service expired
+  maxHoldUntil: { type: Date },  // after this → no liability
+   warnedBeforeExpiry: { type: Boolean, default: false }           
+},
+
+billing: {
+  isChargeable: { type: Boolean, default: false },
+  ratePerHour: { type: Number, default: 20 }, // ₹20/hr example
+  amountAccrued: { type: Number, default: 0 },
+  lastCalculatedAt: { type: Date }
+},
+
+closureReason: {
+  type: String,
+  enum: [
+    "picked_up",
+    "reassigned_no_charge",
+    "expired_no_liability"
+  ]
+}
+
+
 });
 
-module.exports = mongoose.models.Parcel2 || mongoose.model("Parcel2", ParcelSchema);
+module.exports = mongoose.model("Parcel2", ParcelSchema);
